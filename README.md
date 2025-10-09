@@ -1,6 +1,6 @@
-# Blender EditorBar - Blender Addon
+# Blender EditorBar
 
-Blender EditorBar turns the default Outliner and Properties editors in Blender workspaces into a sidebar that you can quickly collapse and expand.
+EditorBar is a Blender add-on that turns the default Outliner and Properties editors in Blender workspaces* into a sidebar that you can quickly collapse and expand. (*not all layouts are supported currently)
 
 A common annoyance when working in blender, for me, is that there's no simple, intuitive way to collapse & expand the default outliner and properties editors in object and edit views. Those key editors are at default docked on the right and feel like they should be easily collapsable, but Blender doesn't provide that out of the box.
 
@@ -13,22 +13,27 @@ When activating the shortcut or clicking a button in the N panel 'View' menu, yo
 ## Customizing the Shortcut
 
 Want a different shortcut?
-You can easily change or add your own in **Edit > Preferences > Keymap**.
-Search for "Editor Sidebar" `wm.toggle_outliner_properties` and assign any key combination you like.
+
+1. Go to **Edit > Preferences > Keymap**
+2. Search for `editorbar.toggle_sidebar` (or "Toggle EditorBar Sidebar")
+3. Click on the keymap entry and assign any key combination you like
 
 ---
 
-## Installation (Blender Extension)
+## Installation
 
-## Installation (Legacy)
+EditorBar is NOT in Blender's "Get Extensions" browser.
+Manual install only:
 
-1. **Download the Addon**
-    - Copy or download `editorbar.py` from this repository.
+1. Download `editorbar.zip` from [Releases](https://github.com/JamesN-dev/blender-editorbar/releases).
 
-2. **Install in Blender**
-    - Open Blender.
-    - Go to **Edit > Preferences > Add-ons > Install**.
-    - Select `editorbar.py` and enable the addon.
+2. Open Blender. Go to **Edit > Preferences > Add-ons**.
+
+3. Click **Install**, pick your `editorbar.zip`.
+
+4. Enable "EditorBar" in the add-ons list.
+
+That's it!
 
 ---
 
@@ -44,15 +49,13 @@ There are three ways to toggle the sidebar:
 
 ## Disclaimer
 
-Blender EditorBar is built and tested for Blender's official workspace/layout presets (e.g., Default, Animation, Scripting).
+Blender EditorBar is optimized for layouts where Outliner and Properties editors are positioned on the right side of the screen, as in Blender’s default configurations. It is built and tested for these default workspace/layout presets (e.g., Layout - object & edit, Sculpting, Modeling, others). It does not yet reliably work in Shading, Animation, Compositing, Geo Nodes, or Scripting default workspaces. Updates for these layouts are planned.
 
-If you use custom or heavily modified workspaces—such as non-standard editor splits, unusual panel placements, or floating editors—sidebar expansion and collapse may behave unpredictably.
-
-The add-on is optimized for layouts where Outliner and Properties editors are positioned on the right side of the screen as in Blender’s default configurations.
+This plugin is not for artists who utilize custom or heavily modified workspaces, such as non-standard editor splits, unusual panel placements, or floating editors, sidebar expansion and collapse may behave unpredictably.
 
 Unexpected or undesired behavior may occur when used in custom setups. Future versions may support more dynamic layouts, but official layouts are the primary target.
 
-For best results, use Blender EditorBar within Blender's official workspace presets.
+For best results, use Blender EditorBar within Blender's official default workspace presets.
 
 ---
 
@@ -68,34 +71,8 @@ For best results, use Blender EditorBar within Blender's official workspace pres
 ### Setup
 
 ```bash
-uv init
-uv add --dev fake-bpy-module-latest basedpyright
 uv sync
 ```
-
-### Type Checking
-
-```bash
-basedpyright
-```
-
-### Linting (optional)
-
-If you use [ruff](https://github.com/astral-sh/ruff):
-
-```bash
-uv add --dev ruff
-ruff check .
-```
-
----
-
-## Troubleshooting
-
-- **Type errors about `bpy` or Blender API:**
-  Ensure `fake-bpy-module-latest` is installed and your editor is using the correct Python environment.
-- **Addon not showing in Blender:**
-  Double-check you installed the correct file and enabled the addon in Preferences.
 
 ---
 

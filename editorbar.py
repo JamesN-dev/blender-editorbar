@@ -3,20 +3,9 @@ from typing import Any, cast
 
 import bpy
 
-bl_info = {
-    'name': 'Blender EditorBar',
-    'author': 'atetraxx',
-    'version': (1, 0),
-    'blender': (4, 5, 0),
-    'location': 'View3D > Sidebar > View Tab',
-    'description': 'Turns the default Outliner and Properties editors in Blender workspaces into a sidebar that you can quickly collapse and expand',
-    'warning': '',
-    'category': 'UI',
-}
-
 
 class EditorTogglePreferences(bpy.types.AddonPreferences):
-    bl_idname = __name__
+    bl_idname = 'editorbar'
 
     sidebar_side: Any = bpy.props.EnumProperty(
         name='Sidebar Side',
@@ -45,15 +34,13 @@ class EditorTogglePreferences(bpy.types.AddonPreferences):
     )
 
     def draw(self, context):
+        print('=== EditorBar Preferences draw() called ===')
         layout = self.layout
+        layout.label(text='EditorBar Preferences')
         layout.prop(self, 'sidebar_side')
         layout.prop(self, 'split_factor')
         layout.prop(self, 'stack_ratio')
         layout.prop(self, 'flip_editors')
-
-
-SIDEBAR_WIDTH_FACTOR: float = 0.173
-PROPERTIES_HEIGHT_FACTOR: float = 0.66
 
 
 def get_rightmost_area(areas: Sequence[bpy.types.Area]) -> bpy.types.Area:
@@ -76,9 +63,42 @@ def close_sidebars(screen: bpy.types.Screen, window: bpy.types.Window) -> None:
                 bpy.ops.screen.area_close()
 
 
+def get_editorbar_prefs_safe():
+    """Safely get EditorBar preferences, fallback to defaults."""
+    default = {
+        'sidebar_side': 'RIGHT',
+        'split_factor': 0.173,
+        'stack_ratio': 0.66,
+        'flip_editors': False,
+    }
+    prefs = getattr(
+        getattr(getattr(bpy.context, 'preferences', None), 'addons', None),
+        'get',
+        lambda x: None,
+    )('editorbar')
+    if prefs is not None and hasattr(prefs, 'preferences'):
+        p = prefs.preferences
+        return {
+            'sidebar_side': getattr(p, 'sidebar_side', default['sidebar_side']),
+            'split_factor': getattr(p, 'split_factor', default['split_factor']),
+            'stack_ratio': getattr(p, 'stack_ratio', default['stack_ratio']),
+            'flip_editors': getattr(p, 'flip_editors', default['flip_editors']),
+        }
+    return default
+
+
 def restore_sidebars(screen: bpy.types.Screen, window: bpy.types.Window) -> bool:
-    """Restore sidebar editors."""
-    # Find the rightmost non-sidebar area to split from
+    """Restore sidebar editors using user preferences."""
+    prefs = get_editorbar_prefs_safe()
+
+    sidebar_side = prefs['sidebar_side']
+    split_factor = prefs['split_factor']
+    stack_ratio = prefs['stack_ratio']
+    flip_editors = prefs['flip_editors']
+
+    # Choose split value based on sidebar side
+    split_value = 1.0 - split_factor if sidebar_side == 'RIGHT' else split_factor
+
     main_areas = [
         a
         for a in screen.areas
@@ -90,29 +110,29 @@ def restore_sidebars(screen: bpy.types.Screen, window: bpy.types.Window) -> bool
     base_area = get_rightmost_area(main_areas)
     override = {'window': window, 'area': base_area}
 
-    # First split: create OUTLINER sidebar
     with cast(Any, bpy.context).temp_override(**override):
-        bpy.ops.screen.area_split(
-            direction='VERTICAL', factor=1.0 - SIDEBAR_WIDTH_FACTOR
-        )
+        bpy.ops.screen.area_split(direction='VERTICAL', factor=split_value)
 
-    # Get the newly created sidebar and set it to OUTLINER
     sidebar_area = screen.areas[-1]
     sidebar_area.type = 'OUTLINER'
     sidebar_area.tag_redraw()
 
-    # Second split: add Properties below Outliner (needs timer delay)
+    # Use stack_ratio for the horizontal split
     bpy.app.timers.register(
-        lambda: split_for_properties(screen, window), first_interval=0.2
+        lambda: split_for_properties(screen, window, stack_ratio, flip_editors),
+        first_interval=0.2,
     )
 
     return True
 
 
 def split_for_properties(
-    screen: bpy.types.Screen, window: bpy.types.Window
+    screen: bpy.types.Screen,
+    window: bpy.types.Window,
+    stack_ratio: float,
+    flip_editors: bool,
 ) -> float | None:
-    """Timer callback to split Outliner area for Properties below."""
+    """Timer callback to split Outliner area for Properties."""
     outliner_areas = [a for a in screen.areas if a.type == 'OUTLINER']
     if not outliner_areas:
         return None
@@ -129,7 +149,7 @@ def split_for_properties(
     with cast(Any, bpy.context).temp_override(**override):
         bpy.ops.screen.area_split(
             direction='HORIZONTAL',
-            factor=PROPERTIES_HEIGHT_FACTOR,
+            factor=stack_ratio,
         )
 
     # Find the NEW area
@@ -140,10 +160,14 @@ def split_for_properties(
             break
 
     if new_area:
-        # NEW area at bottom (34%) = OUTLINER
-        new_area.type = 'OUTLINER'
-        # ORIGINAL area at top (66%) = PROPERTIES
-        original_area.type = 'PROPERTIES'
+        if flip_editors:
+            # Flip: Properties on top, Outliner on bottom
+            new_area.type = 'PROPERTIES'
+            original_area.type = 'OUTLINER'
+        else:
+            # Default: Outliner on top, Properties on bottom
+            new_area.type = 'OUTLINER'
+            original_area.type = 'PROPERTIES'
 
         new_area.tag_redraw()
         original_area.tag_redraw()
@@ -151,10 +175,10 @@ def split_for_properties(
     return None
 
 
-class WM_OT_toggle_outliner_properties(bpy.types.Operator):
-    bl_idname = 'wm.toggle_outliner_properties'
-    bl_label = 'Toggle Outliner/Properties'
-    bl_description = 'Toggle the Outliner/Properties editor sidebars'
+class EDITORBAR_OT_toggle_sidebar(bpy.types.Operator):
+    bl_idname = 'editorbar.toggle_sidebar'
+    bl_label = 'Toggle EditorBar Sidebar'
+    bl_description = 'Toggle the EditorBar sidebar'
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         window = context.window
@@ -169,27 +193,27 @@ class WM_OT_toggle_outliner_properties(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class VIEW3D_PT_toggle_outliner_props(bpy.types.Panel):
-    bl_label = 'Toggle Outliner/Properties'
-    bl_idname = 'VIEW3D_PT_toggle_outliner_props'
+class VIEW3D_PT_toggle_editorbar_sidebar(bpy.types.Panel):
+    bl_label = 'Toggle EditorBar Sidebar'
+    bl_idname = 'VIEW3D_PT_toggle_editorbar_sidebar'
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'View'
 
     def draw(self, context: bpy.types.Context) -> None:
-        self.layout.operator('wm.toggle_outliner_properties', icon='HIDE_OFF')  # type: ignore[reportOptionalMemberAccess]
+        self.layout.operator('editorbar.toggle_sidebar', icon='HIDE_OFF')  # type: ignore[reportOptionalMemberAccess]
 
 
 def menu_func(self: Any, context: bpy.types.Context) -> None:
-    self.layout.operator('wm.toggle_outliner_properties', text='Toggle Sidebar')
+    self.layout.operator('editorbar.toggle_sidebar', text='Toggle Sidebar')
 
 
 addon_keymaps: list[tuple[bpy.types.KeyMap, bpy.types.KeyMapItem]] = []
 
 
 def register() -> None:
-    bpy.utils.register_class(WM_OT_toggle_outliner_properties)
-    bpy.utils.register_class(VIEW3D_PT_toggle_outliner_props)
+    bpy.utils.register_class(EDITORBAR_OT_toggle_sidebar)
+    bpy.utils.register_class(VIEW3D_PT_toggle_editorbar_sidebar)
     bpy.types.VIEW3D_MT_view.append(menu_func)
     wm = bpy.context.window_manager
     if wm:
@@ -197,7 +221,7 @@ def register() -> None:
         if kc:
             km = kc.keymaps.new(name='Window', space_type='EMPTY')
             kmi = km.keymap_items.new(
-                idname='wm.toggle_outliner_properties',
+                idname='editorbar.toggle_sidebar',
                 type='N',
                 value='PRESS',
                 shift=True,
@@ -208,8 +232,8 @@ def register() -> None:
 
 def unregister() -> None:
     bpy.types.VIEW3D_MT_view.remove(menu_func)
-    bpy.utils.unregister_class(VIEW3D_PT_toggle_outliner_props)
-    bpy.utils.unregister_class(WM_OT_toggle_outliner_properties)
+    bpy.utils.unregister_class(VIEW3D_PT_toggle_editorbar_sidebar)
+    bpy.utils.unregister_class(EDITORBAR_OT_toggle_sidebar)
     for km, kmi in addon_keymaps:
         km.keymap_items.remove(kmi)
     addon_keymaps.clear()
