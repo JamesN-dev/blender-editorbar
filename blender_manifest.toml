@@ -1,0 +1,29 @@
+schema_version = "1.0.0"
+
+id = "blender_editorbar"
+version = "1.0.0"
+name = "Blender EditorBar"
+tagline = "Turns the default Outliner and Properties editors in Blender workspaces into a sidebar that you can quickly collapse and expand"
+maintainer = "atetraxx"
+type = "add-on"
+
+blender_version_min = "4.0.0"
+
+license = [
+  "SPDX:GPL-3.0-or-later",
+]
+
+tags = ["User Interface"]
+
+# Add this:
+website = "https://github.com/yourusername/editor_sidebar_toggle"
+
+[build]
+paths_exclude_pattern = [
+  "__pycache__/",
+  ".*",
+  "*.lock",
+  "*.zip",
+  "pyproject.toml",  # Don't include dev files
+  "debugging.md",
+]

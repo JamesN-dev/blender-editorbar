@@ -1,0 +1,17 @@
+# Basic configuration
+line-length = 88
+indent-width = 4
+target-version = 'py312'
+
+[lint]
+# Core rule sets suitable for a small Blender add-on
+select = ['E', 'W', 'F', 'UP', 'B', 'I', 'C4', 'SIM', 'RUF']
+# Ignore line-length; let the formatter handle wrapping
+ignore = ['E501']
+
+[format]
+# Prefer single quotes in formatted code
+quote-style = 'single'
+indent-style = 'space'
+skip-magic-trailing-comma = false
+line-ending = 'auto'

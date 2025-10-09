@@ -1,0 +1,35 @@
+{
+    "typeCheckingMode": "basic",
+    "pythonVersion": "3.12",
+    "pythonPlatform": "Darwin",
+
+    "venvPath": ".",
+    "venv": ".venv",
+
+    "include": ["."],
+    "exclude": [
+        "**/__pycache__",
+        "**/.venv",
+        "**/.venv/**",
+        "**/build",
+        "**/dist",
+        "**/.git"
+    ],
+
+    "useLibraryCodeForTypes": true,
+
+    "executionEnvironments": [
+        {
+            "root": ".",
+            "pythonVersion": "3.12",
+            "pythonPlatform": "Darwin",
+            "extraPaths": []
+        }
+    ],
+
+    // --- Diagnostic rule settings ---
+    "reportUnreachable": true,
+    "reportAttributeAccessIssue": "none",
+    "reportUnknownMemberType": "none",
+    "reportUnknownArgumentType": "none"
+}
