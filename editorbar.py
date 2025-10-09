@@ -5,29 +5,29 @@ import bpy
 
 
 class EditorTogglePreferences(bpy.types.AddonPreferences):
-    bl_idname = 'editorbar'
+    bl_idname = __package__
 
-    sidebar_side: Any = bpy.props.EnumProperty(
+    sidebar_side = bpy.props.EnumProperty(
         name='Sidebar Side',
         description='Choose which side to create sidebar',
         items=[('LEFT', 'Left', ''), ('RIGHT', 'Right', '')],
         default='RIGHT',
     )
-    split_factor: Any = bpy.props.FloatProperty(
+    split_factor = bpy.props.FloatProperty(
         name='Sidebar Width',
         description='Proportion of window width for sidebar',
         min=0.1,
         max=0.5,
         default=0.173,
     )
-    stack_ratio: Any = bpy.props.FloatProperty(
+    stack_ratio = bpy.props.FloatProperty(
         name='Stack Height Ratio',
         description='Proportion of sidebar height for Properties',
         min=0.5,
         max=0.9,
         default=0.66,
     )
-    flip_editors: Any = bpy.props.BoolProperty(
+    flip_editors = bpy.props.BoolProperty(
         name='Flip Editors Vertically',
         description='Outliner on bottom, Properties on top',
         default=False,
@@ -63,38 +63,31 @@ def close_sidebars(screen: bpy.types.Screen, window: bpy.types.Window) -> None:
                 bpy.ops.screen.area_close()
 
 
-def get_editorbar_prefs_safe():
-    """Safely get EditorBar preferences, fallback to defaults."""
-    default = {
-        'sidebar_side': 'RIGHT',
-        'split_factor': 0.173,
-        'stack_ratio': 0.66,
-        'flip_editors': False,
-    }
-    prefs = getattr(
-        getattr(getattr(bpy.context, 'preferences', None), 'addons', None),
-        'get',
-        lambda x: None,
-    )('editorbar')
-    if prefs is not None and hasattr(prefs, 'preferences'):
-        p = prefs.preferences
-        return {
-            'sidebar_side': getattr(p, 'sidebar_side', default['sidebar_side']),
-            'split_factor': getattr(p, 'split_factor', default['split_factor']),
-            'stack_ratio': getattr(p, 'stack_ratio', default['stack_ratio']),
-            'flip_editors': getattr(p, 'flip_editors', default['flip_editors']),
-        }
-    return default
+def get_editorbar_prefs(context: bpy.types.Context) -> Any:
+    """Get EditorBar preferences with fallback to defaults."""
+    try:
+        return context.preferences.addons['editorbar'].preferences
+    except (KeyError, AttributeError):
+        # Return a simple object with default values if preferences not found
+        class DefaultPrefs:
+            sidebar_side: str = 'RIGHT'
+            split_factor: float = 0.173
+            stack_ratio: float = 0.66
+            flip_editors: bool = False
+
+        return DefaultPrefs()
 
 
-def restore_sidebars(screen: bpy.types.Screen, window: bpy.types.Window) -> bool:
+def restore_sidebars(
+    screen: bpy.types.Screen, window: bpy.types.Window, context: bpy.types.Context
+) -> bool:
     """Restore sidebar editors using user preferences."""
-    prefs = get_editorbar_prefs_safe()
+    prefs = get_editorbar_prefs(context)
 
-    sidebar_side = prefs['sidebar_side']
-    split_factor = prefs['split_factor']
-    stack_ratio = prefs['stack_ratio']
-    flip_editors = prefs['flip_editors']
+    sidebar_side = prefs.sidebar_side
+    split_factor = prefs.split_factor
+    stack_ratio = prefs.stack_ratio
+    flip_editors = prefs.flip_editors
 
     # Choose split value based on sidebar side
     split_value = 1.0 - split_factor if sidebar_side == 'RIGHT' else split_factor
@@ -188,8 +181,23 @@ class EDITORBAR_OT_toggle_sidebar(bpy.types.Operator):
         if has_sidebar_editors(screen):
             close_sidebars(screen, window)
         else:
-            restore_sidebars(screen, window)
+            restore_sidebars(screen, window, context)
 
+        return {'FINISHED'}
+
+
+class EDITORBAR_OT_debug_prefs(bpy.types.Operator):
+    bl_idname = 'editorbar.debug_prefs'
+    bl_label = 'Debug EditorBar Preferences'
+    bl_description = 'Print EditorBar preferences to console'
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        prefs = get_editorbar_prefs(context)
+        info = f'Sidebar Side: {prefs.sidebar_side}, Split: {prefs.split_factor}, Stack: {prefs.stack_ratio}, Flip: {prefs.flip_editors}'
+        self.report({'INFO'}, info)
+        print('=== EditorBar Preferences Debug ===')
+        print(info)
         return {'FINISHED'}
 
 
@@ -208,7 +216,7 @@ def menu_func(self: Any, context: bpy.types.Context) -> None:
     self.layout.operator('editorbar.toggle_sidebar', text='Toggle Sidebar')
 
 
-addon_keymaps: list[tuple[bpy.types.KeyMap, bpy.types.KeyMapItem]] = []
+addon_keymaps: Any = []
 
 
 def register() -> None:

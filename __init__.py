@@ -24,6 +24,7 @@ else:
 classes = [
     editorbar.EditorTogglePreferences,
     editorbar.EDITORBAR_OT_toggle_sidebar,
+    editorbar.EDITORBAR_OT_debug_prefs,
     editorbar.VIEW3D_PT_toggle_editorbar_sidebar,
 ]
 
