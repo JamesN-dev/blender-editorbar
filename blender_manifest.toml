@@ -1,13 +1,13 @@
 schema_version = "1.0.0"
 
 id = "editorbar"
-version = "0.2.0"
+version = "0.3.0"
 name = "EditorBar"
 tagline = "Turn Outliner & Properties editors into a toggleable sidebar"
 maintainer = "atetraxx <james@jamesn.design>"
 type = "add-on"
 
-blender_version_min = "4.0.0"
+blender_version_min = "4.2.0"
 
 license = [
   "SPDX:GPL-3.0-or-later",

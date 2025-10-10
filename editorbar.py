@@ -1,8 +1,12 @@
 from collections.abc import Sequence
-from typing import Any, cast
+from functools import partial
+from typing import Any, ClassVar, cast
 
 import bpy
 from bpy.types import Operator, Panel
+
+# Global reference to track the split timer
+_split_timer_func = None
 
 
 def get_rightmost_area(areas: Sequence[bpy.types.Area]) -> bpy.types.Area:
@@ -20,9 +24,19 @@ def close_sidebars(screen: bpy.types.Screen, window: bpy.types.Window) -> None:
         areas = [a for a in screen.areas if a.type == area_type]
         if areas:
             area = get_rightmost_area(areas)
-            override = {'window': window, 'screen': screen, 'area': area}
+            override = {'window': window, 'area': area}
             with cast(Any, bpy.context).temp_override(**override):
                 bpy.ops.screen.area_close()
+
+
+def map_split_factor(normalized: float) -> float:
+    """Map normalized 0-1 value to actual split factor (0.1 to 0.5)."""
+    return 0.1 + (normalized * 0.4)  # 0 -> 0.1, 1 -> 0.5
+
+
+def map_stack_ratio(normalized: float) -> float:
+    """Map normalized 0-1 value to actual stack ratio (0.5 to 0.9)."""
+    return 0.5 + (normalized * 0.4)  # 0 -> 0.5, 1 -> 0.9
 
 
 def get_editorbar_prefs(context: bpy.types.Context) -> Any:
@@ -33,8 +47,8 @@ def get_editorbar_prefs(context: bpy.types.Context) -> Any:
         # Return a simple object with default values if preferences not found
         class DefaultPrefs:
             sidebar_side: str = 'RIGHT'
-            split_factor: float = 0.173
-            stack_ratio: float = 0.66
+            split_factor: float = 0.35  # Normalized value
+            stack_ratio: float = 0.32  # Normalized value
             flip_editors: bool = False
 
         return DefaultPrefs()
@@ -47,8 +61,9 @@ def restore_sidebars(
     prefs = get_editorbar_prefs(context)
 
     sidebar_side = prefs.sidebar_side
-    split_factor = prefs.split_factor
-    stack_ratio = prefs.stack_ratio
+    # Map normalized 0-1 values to actual ranges
+    split_factor = map_split_factor(prefs.split_factor)
+    stack_ratio = map_stack_ratio(prefs.stack_ratio)
     flip_editors = prefs.flip_editors
 
     # Choose split value based on sidebar side
@@ -73,10 +88,15 @@ def restore_sidebars(
     sidebar_area.tag_redraw()
 
     # Use stack_ratio for the horizontal split
-    bpy.app.timers.register(
-        lambda: split_for_properties(screen, window, stack_ratio, flip_editors),
-        first_interval=0.2,
+    # Cancel any existing timer first to prevent multiple sidebars
+    global _split_timer_func
+    if _split_timer_func and bpy.app.timers.is_registered(_split_timer_func):
+        bpy.app.timers.unregister(_split_timer_func)
+
+    _split_timer_func = partial(
+        split_for_properties, screen, window, stack_ratio, flip_editors
     )
+    bpy.app.timers.register(_split_timer_func, first_interval=0.2)
 
     return True
 
@@ -131,11 +151,21 @@ def split_for_properties(
 
 
 class EDITORBAR_OT_toggle_sidebar(Operator):
-    bl_idname = 'editorbar.toggle_sidebar'
-    bl_label = 'Toggle EditorBar Sidebar'
-    bl_description = 'Toggle the EditorBar sidebar'
+    bl_idname: ClassVar[str] = 'editorbar.toggle_sidebar'
+    bl_label: ClassVar[str] = 'Toggle EditorBar Sidebar'
+    bl_description: ClassVar[str] = 'Toggle the EditorBar sidebar'
 
     def execute(self, context: bpy.types.Context) -> set[str]:
+        # Strict area check - MUST be in VIEW_3D only
+        area = getattr(context, 'area', None)
+        if not area or area.type != 'VIEW_3D':
+            self.report({'WARNING'}, 'EditorBar only works in 3D Viewport')
+            return {'CANCELLED'}
+
+        # Extra check: explicitly block PREFERENCES and other non-viewport areas
+        if area.type == 'PREFERENCES':
+            return {'CANCELLED'}
+
         window = context.window
         assert window is not None
         screen = window.screen
@@ -148,11 +178,58 @@ class EDITORBAR_OT_toggle_sidebar(Operator):
         return {'FINISHED'}
 
 
+class EDITORBAR_OT_flip_side(Operator):
+    bl_idname: ClassVar[str] = 'editorbar.flip_side'
+    bl_label: ClassVar[str] = 'Flip Side'
+    bl_description: ClassVar[str] = 'Toggle sidebar between left and right'
+    bl_options: ClassVar[set[str]] = {'REGISTER', 'UNDO'}
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        # Strict area check - MUST be in VIEW_3D only
+        area = getattr(context, 'area', None)
+        if not area or area.type != 'VIEW_3D':
+            self.report({'WARNING'}, 'EditorBar only works in 3D Viewport')
+            return {'CANCELLED'}
+
+        prefs = get_editorbar_prefs(context)
+        # Toggle between LEFT and RIGHT
+        prefs.sidebar_side = 'LEFT' if prefs.sidebar_side == 'RIGHT' else 'RIGHT'
+
+        self.report({'INFO'}, f'Sidebar moved to {prefs.sidebar_side.lower()}')
+        return {'FINISHED'}
+
+
+class EDITORBAR_OT_flip_stack(Operator):
+    bl_idname: ClassVar[str] = 'editorbar.flip_stack'
+    bl_label: ClassVar[str] = 'Flip Stack'
+    bl_description: ClassVar[str] = 'Toggle stacking order (Outliner/Properties)'
+    bl_options: ClassVar[set[str]] = {'REGISTER', 'UNDO'}
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        # Strict area check - MUST be in VIEW_3D only
+        area = getattr(context, 'area', None)
+        if not area or area.type != 'VIEW_3D':
+            self.report({'WARNING'}, 'EditorBar only works in 3D Viewport')
+            return {'CANCELLED'}
+
+        prefs = get_editorbar_prefs(context)
+        # Toggle flip_editors
+        prefs.flip_editors = not prefs.flip_editors
+
+        order = (
+            'Outliner bottom, Properties top'
+            if prefs.flip_editors
+            else 'Properties bottom, Outliner top'
+        )
+        self.report({'INFO'}, f'Stack flipped: {order}')
+        return {'FINISHED'}
+
+
 class EDITORBAR_OT_debug_prefs(Operator):
-    bl_idname = 'editorbar.debug_prefs'
-    bl_label = 'Debug EditorBar Preferences'
-    bl_description = 'Print EditorBar preferences to console'
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_idname: ClassVar[str] = 'editorbar.debug_prefs'
+    bl_label: ClassVar[str] = 'Debug EditorBar Preferences'
+    bl_description: ClassVar[str] = 'Print EditorBar preferences to console'
+    bl_options: ClassVar[set[str]] = {'REGISTER', 'UNDO'}
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         prefs = get_editorbar_prefs(context)
@@ -164,14 +241,25 @@ class EDITORBAR_OT_debug_prefs(Operator):
 
 
 class VIEW3D_PT_toggle_editorbar_sidebar(Panel):
-    bl_label = 'Toggle EditorBar Sidebar'
-    bl_idname = 'VIEW3D_PT_toggle_editorbar_sidebar'
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = 'View'
+    bl_label: ClassVar[str] = 'EditorBar'
+    bl_idname: ClassVar[str] = 'VIEW3D_PT_toggle_editorbar_sidebar'
+    bl_space_type: ClassVar[str] = 'VIEW_3D'
+    bl_region_type: ClassVar[str] = 'UI'
+    bl_category: ClassVar[str] = 'View'
 
     def draw(self, context: bpy.types.Context) -> None:
-        self.layout.operator('editorbar.toggle_sidebar', icon='HIDE_OFF')  # type: ignore[reportOptionalMemberAccess]
+        layout = self.layout
+
+        # Three buttons in a row
+        row = layout.row(align=True)
+        row.operator('editorbar.toggle_sidebar', icon='HIDE_OFF')  # type: ignore[reportOptionalMemberAccess]
+        row.operator('editorbar.flip_side', icon='ARROW_LEFTRIGHT')  # type: ignore[reportOptionalMemberAccess]
+        row.operator('editorbar.flip_stack', icon='UV_SYNC_SELECT')  # type: ignore[reportOptionalMemberAccess]
+
+        # Reset button
+        layout.operator(
+            'editorbar.reset_preferences', text='Reset to Defaults', icon='LOOP_BACK'
+        )  # type: ignore[reportOptionalMemberAccess]
 
 
 def menu_func(self: Any, context: bpy.types.Context) -> None:
@@ -183,6 +271,8 @@ addon_keymaps: Any = []  # type: ignore[misc]
 
 classes = [
     EDITORBAR_OT_toggle_sidebar,
+    EDITORBAR_OT_flip_side,
+    EDITORBAR_OT_flip_stack,
     EDITORBAR_OT_debug_prefs,
     VIEW3D_PT_toggle_editorbar_sidebar,
 ]
