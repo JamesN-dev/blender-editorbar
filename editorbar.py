@@ -2,45 +2,7 @@ from collections.abc import Sequence
 from typing import Any, cast
 
 import bpy
-
-
-class EditorTogglePreferences(bpy.types.AddonPreferences):
-    bl_idname = __package__
-
-    sidebar_side = bpy.props.EnumProperty(
-        name='Sidebar Side',
-        description='Choose which side to create sidebar',
-        items=[('LEFT', 'Left', ''), ('RIGHT', 'Right', '')],
-        default='RIGHT',
-    )
-    split_factor = bpy.props.FloatProperty(
-        name='Sidebar Width',
-        description='Proportion of window width for sidebar',
-        min=0.1,
-        max=0.5,
-        default=0.173,
-    )
-    stack_ratio = bpy.props.FloatProperty(
-        name='Stack Height Ratio',
-        description='Proportion of sidebar height for Properties',
-        min=0.5,
-        max=0.9,
-        default=0.66,
-    )
-    flip_editors = bpy.props.BoolProperty(
-        name='Flip Editors Vertically',
-        description='Outliner on bottom, Properties on top',
-        default=False,
-    )
-
-    def draw(self, context):
-        print('=== EditorBar Preferences draw() called ===')
-        layout = self.layout
-        layout.label(text='EditorBar Preferences')
-        layout.prop(self, 'sidebar_side')
-        layout.prop(self, 'split_factor')
-        layout.prop(self, 'stack_ratio')
-        layout.prop(self, 'flip_editors')
+from bpy.types import Operator, Panel
 
 
 def get_rightmost_area(areas: Sequence[bpy.types.Area]) -> bpy.types.Area:
@@ -66,7 +28,7 @@ def close_sidebars(screen: bpy.types.Screen, window: bpy.types.Window) -> None:
 def get_editorbar_prefs(context: bpy.types.Context) -> Any:
     """Get EditorBar preferences with fallback to defaults."""
     try:
-        return context.preferences.addons['editorbar'].preferences
+        return context.preferences.addons[__package__].preferences  # type: ignore[index]
     except (KeyError, AttributeError):
         # Return a simple object with default values if preferences not found
         class DefaultPrefs:
@@ -168,7 +130,7 @@ def split_for_properties(
     return None
 
 
-class EDITORBAR_OT_toggle_sidebar(bpy.types.Operator):
+class EDITORBAR_OT_toggle_sidebar(Operator):
     bl_idname = 'editorbar.toggle_sidebar'
     bl_label = 'Toggle EditorBar Sidebar'
     bl_description = 'Toggle the EditorBar sidebar'
@@ -186,7 +148,7 @@ class EDITORBAR_OT_toggle_sidebar(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class EDITORBAR_OT_debug_prefs(bpy.types.Operator):
+class EDITORBAR_OT_debug_prefs(Operator):
     bl_idname = 'editorbar.debug_prefs'
     bl_label = 'Debug EditorBar Preferences'
     bl_description = 'Print EditorBar preferences to console'
@@ -201,7 +163,7 @@ class EDITORBAR_OT_debug_prefs(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class VIEW3D_PT_toggle_editorbar_sidebar(bpy.types.Panel):
+class VIEW3D_PT_toggle_editorbar_sidebar(Panel):
     bl_label = 'Toggle EditorBar Sidebar'
     bl_idname = 'VIEW3D_PT_toggle_editorbar_sidebar'
     bl_space_type = 'VIEW_3D'
@@ -216,12 +178,19 @@ def menu_func(self: Any, context: bpy.types.Context) -> None:
     self.layout.operator('editorbar.toggle_sidebar', text='Toggle Sidebar')
 
 
-addon_keymaps: Any = []
+addon_keymaps: Any = []  # type: ignore[misc]
+
+
+classes = [
+    EDITORBAR_OT_toggle_sidebar,
+    EDITORBAR_OT_debug_prefs,
+    VIEW3D_PT_toggle_editorbar_sidebar,
+]
 
 
 def register() -> None:
-    bpy.utils.register_class(EDITORBAR_OT_toggle_sidebar)
-    bpy.utils.register_class(VIEW3D_PT_toggle_editorbar_sidebar)
+    for cls in classes:
+        bpy.utils.register_class(cls)
     bpy.types.VIEW3D_MT_view.append(menu_func)
     wm = bpy.context.window_manager
     if wm:
@@ -240,8 +209,12 @@ def register() -> None:
 
 def unregister() -> None:
     bpy.types.VIEW3D_MT_view.remove(menu_func)
-    bpy.utils.unregister_class(VIEW3D_PT_toggle_editorbar_sidebar)
-    bpy.utils.unregister_class(EDITORBAR_OT_toggle_sidebar)
     for km, kmi in addon_keymaps:
         km.keymap_items.remove(kmi)
     addon_keymaps.clear()
+    for cls in reversed(classes):
+        bpy.utils.unregister_class(cls)
+
+
+if __name__ == '__main__':
+    register()

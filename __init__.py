@@ -1,4 +1,6 @@
 import bpy
+from bpy.props import BoolProperty, EnumProperty, FloatProperty
+from bpy.types import AddonPreferences
 
 bl_info = {
     'name': 'EditorBar',
@@ -11,6 +13,50 @@ bl_info = {
     'category': 'UI',
 }
 
+sidebar_items = [
+    ('LEFT', 'Left', 'Sidebar on the left'),
+    ('RIGHT', 'Right', 'Sidebar on the right'),
+]
+
+
+class EditorBarPreferences(AddonPreferences):
+    bl_idname = __package__  # type: ignore[assignment]
+
+    sidebar_side: EnumProperty(
+        name='Sidebar Side',
+        description='Choose which side to create sidebar',
+        items=sidebar_items,
+        default='RIGHT',
+    )
+    split_factor: FloatProperty(
+        name='Sidebar Width',
+        description='Proportion of window width for sidebar',
+        min=0.1,
+        max=0.5,
+        default=0.173,
+    )
+    stack_ratio: FloatProperty(
+        name='Stack Height Ratio',
+        description='Proportion of sidebar height for Properties',
+        min=0.5,
+        max=0.9,
+        default=0.66,
+    )
+    flip_editors: BoolProperty(
+        name='Flip Editors Vertically',
+        description='Outliner on bottom, Properties on top',
+        default=False,
+    )
+
+    def draw(self, context):
+        layout = self.layout
+        layout.label(text='EditorBar Preferences')
+        layout.prop(self, 'sidebar_side')
+        layout.prop(self, 'split_factor')
+        layout.prop(self, 'stack_ratio')
+        layout.prop(self, 'flip_editors')
+
+
 if 'bpy' in locals():
     import importlib
 
@@ -22,40 +68,21 @@ else:
 
 # Classes to register
 classes = [
-    editorbar.EditorTogglePreferences,
-    editorbar.EDITORBAR_OT_toggle_sidebar,
-    editorbar.EDITORBAR_OT_debug_prefs,
-    editorbar.VIEW3D_PT_toggle_editorbar_sidebar,
+    EditorBarPreferences,
 ]
 
 
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
-
-    bpy.types.VIEW3D_MT_view.append(editorbar.menu_func)
-
-    wm = bpy.context.window_manager
-    if wm:
-        kc = wm.keyconfigs.addon
-        if kc:
-            km = kc.keymaps.new(name='Window', space_type='EMPTY')
-            kmi = km.keymap_items.new(
-                idname='editorbar.toggle_sidebar',
-                type='N',
-                value='PRESS',
-                shift=True,
-                alt=True,
-            )
-            editorbar.addon_keymaps.append((km, kmi))
+    editorbar.register()
 
 
 def unregister():
-    bpy.types.VIEW3D_MT_view.remove(editorbar.menu_func)
-
-    for km, kmi in editorbar.addon_keymaps:
-        km.keymap_items.remove(kmi)
-    editorbar.addon_keymaps.clear()
-
+    editorbar.unregister()
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
+
+
+if __name__ == '__main__':
+    register()

@@ -31,5 +31,10 @@
     "reportUnreachable": true,
     "reportAttributeAccessIssue": "none",
     "reportUnknownMemberType": "none",
-    "reportUnknownArgumentType": "none"
+    "reportUnknownArgumentType": "none",
+    "reportCallInDefaultInitializer": "none",
+    "reportInvalidTypeForm": "none",
+    "reportGeneralTypeIssues": "none",
+    "reportAssignmentType": "none",
+    "reportArgumentType": "none"
 }

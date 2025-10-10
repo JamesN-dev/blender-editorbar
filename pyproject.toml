@@ -1,6 +1,6 @@
 [project]
 name = "editorbar"
-version = "0.1.1"
+version = "0.2.0"
 description = "Turns the default Outliner and Properties editors in Blender workspaces into a sidebar that you can quickly collapse and expand"
 readme = 'README.md'
 requires-python = '>=3.12'
