@@ -1,13 +1,13 @@
 from typing import ClassVar
 
 import bpy
-from bpy.props import BoolProperty, EnumProperty, FloatProperty
+from bpy.props import BoolProperty, EnumProperty, FloatProperty, IntProperty
 from bpy.types import AddonPreferences
 
 bl_info = {
     'name': 'EditorBar',
     'author': 'atetraxx',
-    'version': (0, 3, 0),
+    'version': (0, 3, 1),
     'blender': (4, 2, 0),
     'location': 'View3D > Sidebar > View Tab',
     'description': 'Turns the default Outliner and Properties editors in Blender workspaces into a sidebar that you can quickly collapse and expand',
@@ -15,15 +15,10 @@ bl_info = {
     'category': 'UI',
 }
 
-sidebar_items = [
-    ('LEFT', 'Left', 'Sidebar on the left'),
-    ('RIGHT', 'Right', 'Sidebar on the right'),
-]
-
 # Default values as constants
-DEFAULT_SIDEBAR_SIDE = 'RIGHT'
-DEFAULT_SPLIT_FACTOR = 0.35  # 0-1 normalized (maps to ~23% width)
-DEFAULT_STACK_RATIO = 0.32  # 0-1 normalized (maps to ~66% height)
+DEFAULT_LEFT_SIDEBAR = False  # False = RIGHT, True = LEFT
+DEFAULT_SPLIT_FACTOR = 40  # Default slider: 40 = 19% actual width
+DEFAULT_STACK_RATIO = 66  # Actual percentage (10-90%) - properties height
 DEFAULT_FLIP_EDITORS = False
 
 
@@ -121,7 +116,7 @@ class EditorBarPreferenceMonitor:
                 return 0.15
             addon_prefs = bpy.context.preferences.addons[__package__].preferences  # type: ignore[index]
             current_prefs = {
-                'sidebar_side': addon_prefs.sidebar_side,
+                'left_sidebar': addon_prefs.left_sidebar,
                 'split_factor': addon_prefs.split_factor,
                 'stack_ratio': addon_prefs.stack_ratio,
                 'flip_editors': addon_prefs.flip_editors,
@@ -184,44 +179,32 @@ def on_sidebar_settings_update(self, context):
     _preference_monitor.schedule_immediate_update()
 
 
-def get_width_percentage(normalized: float) -> int:
-    """Get actual width percentage from normalized value (0-1 -> 10-50%)."""
-    actual = 0.1 + (normalized * 0.4)
-    return int(actual * 100)
-
-
-def get_height_percentage(normalized: float) -> int:
-    """Get actual height percentage from normalized value (0-1 -> 50-90%)."""
-    actual = 0.5 + (normalized * 0.4)
-    return int(actual * 100)
-
-
 class EditorBarPreferences(AddonPreferences):
     bl_idname = __package__  # type: ignore[assignment]
 
-    sidebar_side: EnumProperty(
-        name='Sidebar Side',
-        description='Choose which side to create sidebar',
-        items=sidebar_items,
-        default=DEFAULT_SIDEBAR_SIDE,
+    left_sidebar: BoolProperty(
+        name='Left Sidebar',
+        description='Place sidebar on left side (unchecked = right side)',
+        default=DEFAULT_LEFT_SIDEBAR,
         update=on_sidebar_settings_update,
     )
-    split_factor: FloatProperty(
+    split_factor: IntProperty(
         name='Sidebar Width',
-        description='Sidebar width (0 = minimum 10%, 1 = maximum 50%)',
-        min=0.0,
-        max=1.0,
+        description='Sidebar width percentage (10-49%)',
+        min=10,
+        max=49,
         default=DEFAULT_SPLIT_FACTOR,
-        subtype='FACTOR',
+        subtype='PERCENTAGE',
         update=on_sidebar_settings_update,
     )
-    stack_ratio: FloatProperty(
+
+    stack_ratio: IntProperty(
         name='Stack Height Ratio',
-        description='Properties panel height (0 = minimum 50%, 1 = maximum 90%)',
-        min=0.0,
-        max=1.0,
+        description='Properties panel height percentage (10-90%)',
+        min=10,
+        max=90,
         default=DEFAULT_STACK_RATIO,
-        subtype='FACTOR',
+        subtype='PERCENTAGE',
         update=on_sidebar_settings_update,
     )
     flip_editors: BoolProperty(
@@ -240,38 +223,50 @@ class EditorBarPreferences(AddonPreferences):
 
         layout.separator()
 
-        # Sidebar Side
+        # Main controls with checkmarks
         col = layout.column()
-        col.prop(self, 'sidebar_side')
+
+        # Sidebar side with dynamic text
+        row = col.row()
+        side_text = 'Move to Right' if self.left_sidebar else 'Move to Left'
+        row.label(text=side_text)
+        row.prop(self, 'left_sidebar', text='')
+
+        # Flip stack with checkmark
+        row = col.row()
+        flip_text = (
+            'Outliner Bottom, Properties Top'
+            if self.flip_editors
+            else 'Properties Bottom, Outliner Top'
+        )
+        row.label(text=flip_text)
+        row.prop(self, 'flip_editors', text='')
 
         layout.separator()
 
-        # Sidebar Width with percentage display
+        # Width slider with reversed direction (left=wider, right=narrower)
         col = layout.column()
-        width_percent = get_width_percentage(self.split_factor)
-        col.label(text=f'Sidebar Width: {width_percent}% (range: 10-50%)')
-        col.prop(self, 'split_factor', slider=True, text='')
 
+        # Calculate actual width using reversed mapping
+        from .editorbar import map_split_factor, map_stack_ratio
+
+        actual_width_percent = int(map_split_factor(self.split_factor) * 100)
+        actual_height_percent = int(map_stack_ratio(self.stack_ratio) * 100)
+
+        col = layout.column()
+        col.prop(
+            self,
+            'split_factor',
+            text=f'Sidebar Width ({actual_width_percent}%)',
+            slider=True,
+        )
         layout.separator()
-
-        # Stack Height Ratio with percentage display
-        col = layout.column()
-        height_percent = get_height_percentage(self.stack_ratio)
-        col.label(text=f'Properties Height: {height_percent}% (range: 50-90%)')
-        col.prop(self, 'stack_ratio', slider=True, text='')
-
-        layout.separator()
-
-        # Flip Editors with dynamic label
-        col = layout.column()
-        col.prop(self, 'flip_editors')
-        # Dynamic label showing current layout
-        if self.flip_editors:
-            col.label(text='Outliner on Bottom, Properties on Top', icon='INFO')
-        else:
-            col.label(text='Properties on Bottom, Outliner on Top', icon='INFO')
-
-        # Reset to defaults button
+        col.prop(
+            self,
+            'stack_ratio',
+            text=f'Properties Height ({actual_height_percent}%)',
+            slider=True,
+        )
         layout.separator()
         layout.operator(
             'editorbar.reset_preferences', text='Reset to Defaults', icon='LOOP_BACK'
@@ -297,9 +292,11 @@ class EDITORBAR_OT_reset_preferences(bpy.types.Operator):
     def execute(self, context):
         prefs = context.preferences.addons[__package__].preferences  # type: ignore[index]
         # Get default values directly from property definitions
-        for prop in ['split_factor', 'stack_ratio', 'sidebar_side', 'flip_editors']:
+        for prop in ['split_factor', 'stack_ratio', 'left_sidebar', 'flip_editors']:
             default_value = type(prefs).bl_rna.properties[prop].default
             setattr(prefs, prop, default_value)
+        # Trigger immediate update to apply changes
+        on_sidebar_settings_update(prefs, context)
         self.report({'INFO'}, 'EditorBar preferences reset to defaults')
         return {'FINISHED'}
 
