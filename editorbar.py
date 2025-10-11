@@ -28,27 +28,30 @@ def close_sidebars(screen: bpy.types.Screen, window: bpy.types.Window) -> None:
                 bpy.ops.screen.area_close()
 
 
-def map_split_factor(slider_value: int) -> float:
-    """Map slider value to actual split factor (reversed: left=wider, right=narrower)."""
-    min_val, max_val = 10, 49
-    actual_factor = (max_val - slider_value + min_val) / 100.0
-    return max(0.1, min(actual_factor, 0.49))
+def map_split_factor(slider_value: float) -> float:
+    """Convert percentage to split factor."""
+    return slider_value / 100.0
 
 
 def map_stack_ratio(percentage: int) -> float:
-    """Map percentage to stack ratio."""
+    """Convert percentage to stack ratio."""
     return percentage / 100.0
 
 
 def get_editorbar_prefs(context: bpy.types.Context) -> Any:
     """Get EditorBar preferences with fallback to defaults."""
     try:
-        return context.preferences.addons[__package__].preferences
-    except (KeyError, AttributeError):
+        prefs_obj = cast(Any, cast(Any, context).preferences)
+        addons = getattr(prefs_obj, 'addons', None)
+        pkg = __package__ or ''
+        if addons and pkg in addons:
+            return addons[pkg].preferences  # type: ignore[index]
+    except Exception:
+        pass
 
         class DefaultPrefs:
             left_sidebar: bool = False
-            split_factor: int = 40
+            split_factor: int = 19
             stack_ratio: int = 66
             flip_editors: bool = False
 
@@ -62,7 +65,8 @@ def restore_sidebars(
     prefs = get_editorbar_prefs(context)
 
     left_sidebar = prefs.left_sidebar
-    split_factor = map_split_factor(prefs.split_factor)
+    # Reverse width: slider shows 10-49, but we invert so left=wider, right=narrower
+    split_factor = map_split_factor(59.0 - prefs.split_factor)
     stack_ratio = map_stack_ratio(prefs.stack_ratio)
     flip_editors = prefs.flip_editors
 
@@ -116,11 +120,17 @@ def split_for_properties(
 
     areas_before = screen.areas[:]
 
+    # Compute split factor from stack_ratio only - flip_editors doesn't affect slider behavior
+    split_factor = stack_ratio
+    # Avoid ambiguous 0.5 edge case by nudging slightly
+    if abs(split_factor - 0.5) < 1e-6:
+        split_factor = 0.501
+
     override = {'window': window, 'area': original_area}
     with cast(Any, bpy.context).temp_override(**override):
         bpy.ops.screen.area_split(
             direction='HORIZONTAL',
-            factor=stack_ratio,
+            factor=split_factor,
         )
 
     new_area = None
@@ -129,16 +139,26 @@ def split_for_properties(
             new_area = area
             break
 
-    if new_area:
-        if flip_editors:
-            new_area.type = 'PROPERTIES'
-            original_area.type = 'OUTLINER'
-        else:
-            new_area.type = 'OUTLINER'
-            original_area.type = 'PROPERTIES'
+    if not new_area:
+        return None
 
-        new_area.tag_redraw()
-        original_area.tag_redraw()
+    # Determine top/bottom by Y coordinate - larger Y is higher on screen
+    if new_area.y > original_area.y:
+        top_area, bottom_area = new_area, original_area
+    else:
+        top_area, bottom_area = original_area, new_area
+
+    if flip_editors:
+        # Properties bottom, Outliner top
+        top_area.type = 'OUTLINER'
+        bottom_area.type = 'PROPERTIES'
+    else:
+        # Outliner bottom, Properties top
+        top_area.type = 'PROPERTIES'
+        bottom_area.type = 'OUTLINER'
+
+    top_area.tag_redraw()
+    bottom_area.tag_redraw()
 
     return None
 
@@ -205,9 +225,9 @@ class EDITORBAR_OT_flip_stack(Operator):
         prefs.flip_editors = not prefs.flip_editors
 
         order = (
-            'Outliner bottom, Properties top'
+            'Properties bottom, Outliner top'
             if prefs.flip_editors
-            else 'Properties bottom, Outliner top'
+            else 'Outliner bottom, Properties top'
         )
         self.report({'INFO'}, f'Stack flipped: {order}')
         return {'FINISHED'}
@@ -237,18 +257,17 @@ class VIEW3D_PT_toggle_editorbar_sidebar(Panel):
     bl_category: ClassVar[str] = 'View'
 
     def draw(self, context: bpy.types.Context) -> None:
-        layout = self.layout
-        prefs = get_editorbar_prefs(context)
+        layout = cast(Any, self.layout)
 
         row = layout.row(align=True)
         row.operator('editorbar.toggle_sidebar', icon='HIDE_OFF')  # type: ignore[reportOptionalMemberAccess]
         row.operator('editorbar.flip_side', icon='ARROW_LEFTRIGHT')  # type: ignore[reportOptionalMemberAccess]
         row.operator('editorbar.flip_stack', icon='UV_SYNC_SELECT')  # type: ignore[reportOptionalMemberAccess]
 
-        layout.separator()
-        layout.operator(
+        layout.separator()  # type: ignore[reportOptionalMemberAccess]
+        layout.operator(  # type: ignore[reportOptionalMemberAccess]
             'editorbar.reset_preferences', text='Reset to Defaults', icon='LOOP_BACK'
-        )  # type: ignore[reportOptionalMemberAccess]
+        )
 
 
 def menu_func(self: Any, context: bpy.types.Context) -> None:

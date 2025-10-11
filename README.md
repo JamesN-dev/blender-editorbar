@@ -59,23 +59,6 @@ For best results, use Blender EditorBar within Blender's official default worksp
 
 ---
 
-## Development
-
-### Requirements
-
-- Python 3.12+
-- [uv](https://github.com/astral-sh/uv) (dependency management)
-- [basedpyright](https://github.com/RobertCraigie/basedpyright) (type checking)
-- [fake-bpy-module-latest](https://pypi.org/project/fake-bpy-module-latest/) (Blender API stubs for dev)
-
-### Setup
-
-```bash
-uv sync
-```
-
----
-
 ## License
 
 GPL-3.0-or-later
