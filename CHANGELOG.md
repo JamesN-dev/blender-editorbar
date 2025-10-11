@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.5] - 2025-10-10
+
+- update version
+- Update README with images
+
+
 ## [0.3.4] - 2025-10-10
 
 - Add latest 3.4 dist/zip for 0.3.4 release
