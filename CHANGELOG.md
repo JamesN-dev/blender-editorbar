@@ -2,6 +2,12 @@
 
 ## [0.3.3] - 2025-10-10
 
+- Add build .zip
+- Add screenshots and tracker URL
+
+
+## [0.3.3] - 2025-10-10
+
 - docs: Add 3D Viewport limitation note to README
 
 

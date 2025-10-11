@@ -7,9 +7,9 @@
       "id": "editorbar",
       "name": "EditorBar",
       "tagline": "Turn Outliner & Properties editors into a toggleable sidebar",
-      "version": "0.3.1",
+      "version": "0.3.4",
       "type": "add-on",
-      "maintainer": "atetraxx <james@jamesn.design>",
+      "maintainer": "Blazing Fast Labs <james@jamesn.design>",
       "license": [
         "SPDX:GPL-3.0-or-later"
       ],
@@ -19,8 +19,8 @@
         "User Interface"
       ],
       "archive_url": "./editorbar.zip",
-      "archive_size": 26679,
-      "archive_hash": "sha256:172d591d115ce6ae3e0dc58d102f4061a490bcb540222f806fc152fd12d4d646"
+      "archive_size": 28410,
+      "archive_hash": "sha256:d10298d74ffc9e52a33d593b153b0a2d4688ceb38bdd308f312fbf90fefc1ceb"
     }
   ]
 }

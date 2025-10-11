@@ -105,6 +105,10 @@ def create_release():
     update_init_version(version)
     update_changelog(version)
     
+    # Commit the changelog and version updates
+    subprocess.run(["git", "add", "."], check=True)
+    subprocess.run(["git", "commit", "-m", f"Release {version}: Update versions and changelog"], check=True)
+    
     print(f"Creating release for version {version}")
     
     # Push commits first
