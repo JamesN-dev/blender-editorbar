@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.4] - 2025-10-10
+
+- Add latest 3.4 dist/zip for 0.3.4 release
+- Update version to 0.3.4
+- Add build .zip
+- Add screenshots and tracker URL
+
+
 ## [0.3.3] - 2025-10-10
 
 - Add build .zip
