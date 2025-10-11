@@ -6,12 +6,21 @@ EditorBar is a Blender add-on that turns the default Outliner and Properties edi
 
 A common annoyance when working in blender, for me, is that there's no simple, intuitive way to collapse & expand the default outliner and properties editors in object and edit views. Those key editors are at default docked on the right and feel like they should be easily collapsable, but Blender doesn't provide that out of the box.
 
+When activating the shortcut or clicking a button in the N panel 'View' menu, you can collapse & expand both editors at once, turning those default editors into a toggleable sidebar. By default, the shortcut is <kbd>Alt</kbd>/<kbd>Opt</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd>, echoing Blender's own "N panel" sidebar shortcut.
+
 **This add-on fixes that.**
 
-![EditorBar in action](images/screenshot1.png)
-![EditorBar preferences](images/screenshot2.png)
+**N-Panel Quick Options:**
 
-When activating the shortcut or clicking a button in the N panel 'View' menu, you can collapse & expand both editors at once, turning those default editors into a toggleable sidebar. By default, the shortcut is <kbd>Alt</kbd>/<kbd>Opt</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd>, echoing Blender's own "N panel" sidebar shortcut.
+<img src="images/Screenshot1.png" width="300">
+
+**Preference Settings:**
+
+<img src="images/Screenshot2.png" width="300">
+
+**Sidebar on Left Side:**
+
+<img src="images/Screenshot3.png" width="300">
 
 ---
 
