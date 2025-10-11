@@ -2,6 +2,8 @@
 
 EditorBar is a Blender add-on that turns the default Outliner and Properties editors in Blender workspaces* into a sidebar that you can quickly collapse and expand. (*not all layouts are supported currently)
 
+**Note**: EditorBar currently only works in 3D Viewport areas. The sidebar toggle is designed specifically for 3D Viewport workflows. (See Disclaimer at bottom of README.md for more information.)
+
 A common annoyance when working in blender, for me, is that there's no simple, intuitive way to collapse & expand the default outliner and properties editors in object and edit views. Those key editors are at default docked on the right and feel like they should be easily collapsable, but Blender doesn't provide that out of the box.
 
 **This add-on fixes that.**
@@ -22,16 +24,20 @@ Want a different shortcut?
 
 ## Installation
 
-EditorBar is NOT in Blender's "Get Extensions" browser.
-Manual install only:
+### Method 1: Extensions (Blender 4.2+)
 
-1. Download `editorbar.zip` from [Releases](https://github.com/JamesN-dev/blender-editorbar/releases).
+1. Download `editorbar.zip` from [Releases](https://github.com/JamesN-dev/blender-editorbar/releases/latest)
+2. Open Blender → **Edit > Preferences > Get Extensions**
+3. Click the dropdown arrow next to "Get Extensions" → **Install from Disk**
+4. Select your downloaded `editorbar.zip`
+5. Enable "EditorBar" in the extensions list
 
-2. Open Blender. Go to **Edit > Preferences > Add-ons**.
+### Method 2: Legacy Add-ons (All Blender versions)
 
-3. Click **Install**, pick your `editorbar.zip`.
-
-4. Enable "EditorBar" in the add-ons list.
+1. Download `editorbar.zip` from [Releases](https://github.com/JamesN-dev/blender-editorbar/releases/latest)
+2. Open Blender → **Edit > Preferences > Add-ons**
+3. Click **Install** → Select your downloaded `editorbar.zip`
+4. Enable "EditorBar" in the add-ons list
 
 That's it!
 
