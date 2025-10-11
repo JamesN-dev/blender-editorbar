@@ -7,7 +7,7 @@ from bpy.types import AddonPreferences
 bl_info = {
     'name': 'EditorBar',
     'author': 'atetraxx',
-    'version': (0, 3, 2),
+    'version': (0, 3, 3),
     'blender': (4, 2, 0),
     'location': 'View3D > Sidebar > View Tab',
     'description': 'Turns the default Outliner and Properties editors in Blender workspaces into a sidebar that you can quickly collapse and expand',

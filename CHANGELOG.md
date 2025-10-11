@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.3] - 2025-10-10
+
+- docs: Add 3D Viewport limitation note to README
+
+
 ## [0.3.2] - 2025-10-10
 
 - feat: Fix height slider flip bug and improve slider precision

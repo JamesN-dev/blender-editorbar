@@ -8,6 +8,9 @@ A common annoyance when working in blender, for me, is that there's no simple, i
 
 **This add-on fixes that.**
 
+![EditorBar in action](images/screenshot1.png)
+![EditorBar preferences](images/screenshot2.png)
+
 When activating the shortcut or clicking a button in the N panel 'View' menu, you can collapse & expand both editors at once, turning those default editors into a toggleable sidebar. By default, the shortcut is <kbd>Alt</kbd>/<kbd>Opt</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd>, echoing Blender's own "N panel" sidebar shortcut.
 
 ---
