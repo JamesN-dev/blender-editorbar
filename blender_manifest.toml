@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "editorbar"
-version = "0.3.3"
+version = "0.3.4"
 name = "EditorBar"
 tagline = "Turn Outliner & Properties editors into a toggleable sidebar"
 maintainer = "Blazing Fast Labs <james@jamesn.design>"
