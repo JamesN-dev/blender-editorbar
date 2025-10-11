@@ -24,7 +24,6 @@ build/
 Thumbs.db
 
 # Project specific
-*.zip
 *.blend
 *.blend1
 logs/

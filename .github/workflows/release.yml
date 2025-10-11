@@ -11,14 +11,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      
-      - name: Build addon
-        run: python build.py
-      
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
