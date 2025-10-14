@@ -5,6 +5,9 @@ from typing import Any, ClassVar, cast
 import bpy
 from bpy.types import Operator, Panel
 
+from . import version_adapter</parameter>
+from bpy.types import Operator, Panel
+
 _split_timer_func = None
 
 
@@ -23,9 +26,8 @@ def close_sidebars(screen: bpy.types.Screen, window: bpy.types.Window) -> None:
         areas = [a for a in screen.areas if a.type == area_type]
         if areas:
             area = get_rightmost_area(areas)
-            override = {'window': window, 'area': area}
-            with cast(Any, bpy.context).temp_override(**override):
-                bpy.ops.screen.area_close()
+            # Use safe wrapper to prevent crashes on 4.2
+            version_adapter.safe_area_close(screen, window, area)
 
 
 def map_split_factor(slider_value: float) -> float:
@@ -81,14 +83,16 @@ def restore_sidebars(
         return False
 
     base_area = get_rightmost_area(main_areas)
-    override = {'window': window, 'area': base_area}
+    # Use safe wrapper to split the area
+    split_success = version_adapter.safe_area_split(
+        screen, window, base_area, 'VERTICAL', split_value
+    )
 
-    with cast(Any, bpy.context).temp_override(**override):
-        bpy.ops.screen.area_split(direction='VERTICAL', factor=split_value)
+    if not split_success:
+        return False
 
     sidebar_area = screen.areas[-1]
-    sidebar_area.type = 'OUTLINER'
-    sidebar_area.tag_redraw()
+    version_adapter.safe_change_area_type(sidebar_area, 'OUTLINER')
 
     global _split_timer_func
     if _split_timer_func and bpy.app.timers.is_registered(_split_timer_func):
@@ -126,12 +130,13 @@ def split_for_properties(
     if abs(split_factor - 0.5) < 1e-6:
         split_factor = 0.501
 
-    override = {'window': window, 'area': original_area}
-    with cast(Any, bpy.context).temp_override(**override):
-        bpy.ops.screen.area_split(
-            direction='HORIZONTAL',
-            factor=split_factor,
-        )
+    # Use safe wrapper to split the area
+    split_success = version_adapter.safe_area_split(
+        screen, window, original_area, 'HORIZONTAL', split_factor
+    )
+
+    if not split_success:
+        return None
 
     new_area = None
     for area in screen.areas:
@@ -150,15 +155,12 @@ def split_for_properties(
 
     if flip_editors:
         # Properties bottom, Outliner top
-        top_area.type = 'OUTLINER'
-        bottom_area.type = 'PROPERTIES'
+        version_adapter.safe_change_area_type(top_area, 'OUTLINER')
+        version_adapter.safe_change_area_type(bottom_area, 'PROPERTIES')
     else:
         # Outliner bottom, Properties top
-        top_area.type = 'PROPERTIES'
-        bottom_area.type = 'OUTLINER'
-
-    top_area.tag_redraw()
-    bottom_area.tag_redraw()
+        version_adapter.safe_change_area_type(top_area, 'PROPERTIES')
+        version_adapter.safe_change_area_type(bottom_area, 'OUTLINER')
 
     return None
 
@@ -169,6 +171,7 @@ class EDITORBAR_OT_toggle_sidebar(Operator):
     bl_description: ClassVar[str] = 'Toggle the EditorBar sidebar'
 
     def execute(self, context: bpy.types.Context) -> set[str]:
+        # Validate context before any operations
         area = getattr(context, 'area', None)
         if not area or area.type != 'VIEW_3D':
             self.report({'WARNING'}, 'EditorBar only works in 3D Viewport')
@@ -178,13 +181,28 @@ class EDITORBAR_OT_toggle_sidebar(Operator):
             return {'CANCELLED'}
 
         window = context.window
-        assert window is not None
-        screen = window.screen
+        if not window:
+            self.report({'WARNING'}, 'No valid window context')
+            return {'CANCELLED'}
 
-        if has_sidebar_editors(screen):
-            close_sidebars(screen, window)
-        else:
-            restore_sidebars(screen, window, context)
+        screen = window.screen
+        if not screen:
+            self.report({'WARNING'}, 'No valid screen context')
+            return {'CANCELLED'}
+
+        # Additional validation for safe context
+        if not version_adapter.is_safe_context_for_area_ops(window, screen, area):
+            self.report({'WARNING'}, 'Context not safe for area operations')
+            return {'CANCELLED'}
+
+        try:
+            if has_sidebar_editors(screen):
+                close_sidebars(screen, window)
+            else:
+                restore_sidebars(screen, window, context)
+        except Exception as e:
+            self.report({'ERROR'}, f'Failed to toggle sidebar: {e}')
+            return {'CANCELLED'}
 
         return {'FINISHED'}
 
@@ -201,11 +219,26 @@ class EDITORBAR_OT_flip_side(Operator):
             self.report({'WARNING'}, 'EditorBar only works in 3D Viewport')
             return {'CANCELLED'}
 
-        prefs = get_editorbar_prefs(context)
-        prefs.left_sidebar = not prefs.left_sidebar
+        window = context.window
+        if not window:
+            self.report({'WARNING'}, 'No valid window context')
+            return {'CANCELLED'}
 
-        side = 'left' if prefs.left_sidebar else 'right'
-        self.report({'INFO'}, f'Sidebar moved to {side}')
+        screen = window.screen
+        if not screen:
+            self.report({'WARNING'}, 'No valid screen context')
+            return {'CANCELLED'}
+
+        try:
+            prefs = get_editorbar_prefs(context)
+            prefs.left_sidebar = not prefs.left_sidebar
+
+            side = 'left' if prefs.left_sidebar else 'right'
+            self.report({'INFO'}, f'Sidebar moved to {side}')
+        except Exception as e:
+            self.report({'ERROR'}, f'Failed to flip side: {e}')
+            return {'CANCELLED'}
+
         return {'FINISHED'}
 
 
@@ -221,15 +254,30 @@ class EDITORBAR_OT_flip_stack(Operator):
             self.report({'WARNING'}, 'EditorBar only works in 3D Viewport')
             return {'CANCELLED'}
 
-        prefs = get_editorbar_prefs(context)
-        prefs.flip_editors = not prefs.flip_editors
+        window = context.window
+        if not window:
+            self.report({'WARNING'}, 'No valid window context')
+            return {'CANCELLED'}
 
-        order = (
-            'Properties bottom, Outliner top'
-            if prefs.flip_editors
-            else 'Outliner bottom, Properties top'
-        )
-        self.report({'INFO'}, f'Stack flipped: {order}')
+        screen = window.screen
+        if not screen:
+            self.report({'WARNING'}, 'No valid screen context')
+            return {'CANCELLED'}
+
+        try:
+            prefs = get_editorbar_prefs(context)
+            prefs.flip_editors = not prefs.flip_editors
+
+            order = (
+                'Properties bottom, Outliner top'
+                if prefs.flip_editors
+                else 'Outliner bottom, Properties top'
+            )
+            self.report({'INFO'}, f'Stack flipped: {order}')
+        except Exception as e:
+            self.report({'ERROR'}, f'Failed to flip stack: {e}')
+            return {'CANCELLED'}
+
         return {'FINISHED'}
 
 
