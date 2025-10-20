@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="images/Blender-EditoBar-ICON.png" alt="EditorBar Icon" width="128">
+</p>
+
 # Blender EditorBar
 
 EditorBar is a Blender add-on that turns the default Outliner and Properties editors in Blender workspaces* into a sidebar that you can quickly collapse and expand. (*not all layouts are supported currently)
@@ -17,12 +21,26 @@ There are three ways to toggle the sidebar:
 - **Sidebar button** a button residing within the N panel (View menu)
 - **Keyboard shortcut:** <kbd>Alt</kbd>/<kbd>Opt</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd>
 
-You can activate the shortcut or click a button in the N panel 'View' menu to collapse & expand the 'sidebar'. By default, the shortcut is <kbd>Alt</kbd>/<kbd>Opt</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd>, echoing Blender's own "N panel" sidebar shortcut.
+By default, the shortcut is <kbd>Alt</kbd>/<kbd>Opt</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd>, echoing Blender's own "N panel" sidebar shortcut.
 
 **N-Panel Quick Options:**
+You can activate via the shortcut or click a button in the N panel 'View' menu to collapse & expand the 'sidebar'.
 
 <img src="images/Screenshot1.png" width="300">
 
+---
+
+**Preference Settings:**
+After install, you can change the default position settings of the sidebar in Edit > Preferences > Addons
+
+<img src="images/Screenshot2.png" width="300">
+
+**Sidebar on Left Side:**
+Quickly toggle the sidebar position between left and right using the shortcut or N-panel button.
+
+<img src="images/Screenshot3.png" width="300">
+
+---
 
 ## Customizing the Shortcut
 
@@ -31,16 +49,6 @@ Want a different shortcut?
 1. Go to **Edit > Preferences > Keymap**
 2. Search for `editorbar.toggle_sidebar` (or "Toggle EditorBar Sidebar")
 3. Click on the keymap entry and assign any key combination you like
-
----
-
-**Preference Settings:**
-
-<img src="images/Screenshot2.png" width="300">
-
-**Sidebar on Left Side:**
-
-<img src="images/Screenshot3.png" width="300">
 
 ---
 
