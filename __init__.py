@@ -4,6 +4,8 @@ import bpy
 from bpy.props import BoolProperty, FloatProperty
 from bpy.types import AddonPreferences
 
+from . import version_adapter
+
 bl_info = {
     'name': 'EditorBar',
     'author': 'atetraxx',
@@ -108,6 +110,13 @@ class EditorBarPreferenceMonitor:
             self._stop_timer()
             return None
 
+        # Additional safety check for timer context validity
+        if not version_adapter.validate_timer_context():
+            if self._debug:
+                print('[EditorBar] Invalid timer context, stopping')
+            self._stop_timer()
+            return None
+
         # Check for preference changes
         try:
             if not bpy.context.preferences or not hasattr(
@@ -141,6 +150,12 @@ class EditorBarPreferenceMonitor:
     def _update_viewports(self):
         """Apply changes to all VIEW_3D areas with sidebars."""
         try:
+            # Validate timer context before any operations
+            if not version_adapter.validate_timer_context():
+                if self._debug:
+                    print('[EditorBar] Invalid context for viewport update')
+                return
+
             # Import here to avoid circular dependencies
             from . import editorbar
 
@@ -151,17 +166,29 @@ class EditorBarPreferenceMonitor:
                     print('[EditorBar] No screen context available')
                 return
 
+            window = bpy.context.window
+            if not window:
+                if self._debug:
+                    print('[EditorBar] No window context available')
+                return
+
+            # Validate window/screen relationship
+            if not hasattr(window, 'screen') or window.screen != screen:
+                if self._debug:
+                    print('[EditorBar] Window/screen context mismatch')
+                return
+
             # Only update if sidebars actually exist
             if editorbar.has_sidebar_editors(screen):
                 if self._debug:
                     print('[EditorBar] Updating viewports with new preferences')
-                window = bpy.context.window
-                if window:
-                    # Close and reopen with new settings
-                    editorbar.close_sidebars(screen, window)
-                    editorbar.restore_sidebars(screen, window, bpy.context)
-        except Exception:
-            # Silently fail to avoid console spam during normal operations
+                # Close and reopen with new settings
+                editorbar.close_sidebars(screen, window)
+                editorbar.restore_sidebars(screen, window, bpy.context)
+        except Exception as e:
+            # Log errors for debugging but don't crash
+            if self._debug:
+                print(f'[EditorBar] Viewport update error: {e}')
             pass
 
 

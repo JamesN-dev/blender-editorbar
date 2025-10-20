@@ -1,24 +1,42 @@
+<p align="center">
+  <img src="images/Blender-EditoBar-ICON.png" alt="EditorBar Icon" width="128">
+</p>
+
 # Blender EditorBar
 
 EditorBar is a Blender add-on that turns the default Outliner and Properties editors in Blender workspaces* into a sidebar that you can quickly collapse and expand. (*not all layouts are supported currently)
 
 **Note**: EditorBar currently only works in 3D Viewport areas. The sidebar toggle is designed specifically for 3D Viewport workflows. (See Disclaimer at bottom of README.md for more information.)
+**Version Note**: Developed and tested mostly in Blender 4.5. I have created bugfixes for 4.2-4.4 and should work but I have not done extensive testing. Please report any issues you encounter.
 
 A common annoyance when working in blender, for me, is that there's no simple, intuitive way to collapse & expand the default outliner and properties editors in object and edit views. Those key editors are at default docked on the right and feel like they should be easily collapsable, but Blender doesn't provide that out of the box.
 
-When activating the shortcut or clicking a button in the N panel 'View' menu, you can collapse & expand both editors at once, turning those default editors into a toggleable sidebar. By default, the shortcut is <kbd>Alt</kbd>/<kbd>Opt</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd>, echoing Blender's own "N panel" sidebar shortcut.
-
 **This add-on fixes that.**
 
+## Usage
+
+There are three ways to toggle the sidebar:
+
+- **3D Viewport Menu** at very bottom of menu
+- **Sidebar button** a button residing within the N panel (View menu)
+- **Keyboard shortcut:** <kbd>Alt</kbd>/<kbd>Opt</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd>
+
+By default, the shortcut is <kbd>Alt</kbd>/<kbd>Opt</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd>, echoing Blender's own "N panel" sidebar shortcut.
+
 **N-Panel Quick Options:**
+You can activate via the shortcut or click a button in the N panel 'View' menu to collapse & expand the 'sidebar'.
 
 <img src="images/Screenshot1.png" width="300">
 
+---
+
 **Preference Settings:**
+After install, you can change the default position settings of the sidebar in Edit > Preferences > Addons
 
 <img src="images/Screenshot2.png" width="300">
 
 **Sidebar on Left Side:**
+Quickly toggle the sidebar position between left and right using the shortcut or N-panel button.
 
 <img src="images/Screenshot3.png" width="300">
 
@@ -52,16 +70,6 @@ Want a different shortcut?
 4. Enable "EditorBar" in the add-ons list
 
 That's it!
-
----
-
-## Usage
-
-There are three ways to toggle the sidebar:
-
-- **3D Viewport Menu** at very bottom of menu
-- **Sidebar button** a button residing within the N panel (View menu)
-- **Keyboard shortcut:** <kbd>Alt</kbd>/<kbd>Opt</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd>
 
 ---
 
