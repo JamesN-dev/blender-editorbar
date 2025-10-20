@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0] - 2025-10-20
+
+- Release 0.3.5: Update versions and changelog
+- Merge pull request #2 from JamesN-dev/flipside-crashfix
+- Docs: Update README.md
+- Optimize version adapter: reduce debug spam, cache version checks
+- add tutorial video
+- prep for blender-extension publishing
+- docs: update docs to suggest blender version 4.5 and note of version adapter for 4.2-4.4
+- Add version adapter for Blender 4.2+ compatibility
+
+
 ## [0.3.5] - 2025-10-20
 
 - Merge pull request #2 from JamesN-dev/flipside-crashfix
