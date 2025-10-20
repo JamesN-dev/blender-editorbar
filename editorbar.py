@@ -5,8 +5,7 @@ from typing import Any, ClassVar, cast
 import bpy
 from bpy.types import Operator, Panel
 
-from . import version_adapter</parameter>
-from bpy.types import Operator, Panel
+from . import version_adapter
 
 _split_timer_func = None
 
@@ -191,7 +190,7 @@ class EDITORBAR_OT_toggle_sidebar(Operator):
             return {'CANCELLED'}
 
         # Additional validation for safe context
-        if not version_adapter.is_safe_context_for_area_ops(window, screen, area):
+        if not version_adapter.check_area(window, screen, area):
             self.report({'WARNING'}, 'Context not safe for area operations')
             return {'CANCELLED'}
 
