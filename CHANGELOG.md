@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.2] - 2025-10-21
+
+- Revert "Release 0.4.1: Update versions and changelog"
+- Release 0.4.1: Update versions and changelog
+- feat(preferences): auto-apply EditorBar layout on Blender startup
+- refactor: finalize v0.4.2 with guarded logging and UI polish
+
+
 ## [0.4.1] - 2025-10-20
 
 - fix: turn debug mode off for release and removed unneccesary files from the build .zip
