@@ -1,6 +1,7 @@
 from typing import ClassVar
 
 import bpy
+from bpy.app.handlers import persistent
 from bpy.props import BoolProperty, FloatProperty
 from bpy.types import AddonPreferences
 
@@ -22,6 +23,11 @@ DEFAULT_LEFT_SIDEBAR = False  # False = RIGHT, True = LEFT
 DEFAULT_SPLIT_FACTOR = 41.75  # Actual percentage width (10-49%), reversed: left=wider
 DEFAULT_STACK_RATIO = 66.0  # Actual percentage height (51-90%)
 DEFAULT_FLIP_EDITORS = False
+
+S_MIN = 10.0
+S_MAX = 49.0
+S_SUM = S_MIN + S_MAX  # 59.0
+APPLY_ON_STARTUP_DEFAULT = True
 
 
 class EditorBarPreferenceMonitor:
@@ -209,12 +215,41 @@ class EditorBarPreferences(AddonPreferences):
         default=DEFAULT_LEFT_SIDEBAR,
         update=on_sidebar_settings_update,
     )
+    split_factor_internal: FloatProperty(
+        name='Sidebar Width (internal)',
+        description='Internal inverted width storage',
+        min=S_MIN,
+        max=S_MAX,
+        default=(S_SUM - DEFAULT_SPLIT_FACTOR),
+        options={'HIDDEN'},
+    )
+
+    def _get_split(self):
+        # Return the user-facing value; invert the internal storage
+        val = getattr(self, 'split_factor_internal', (S_SUM - DEFAULT_SPLIT_FACTOR))
+        # Clamp for safety
+        if val < S_MIN:
+            val = S_MIN
+        elif val > S_MAX:
+            val = S_MAX
+        return S_SUM - val
+
+    def _set_split(self, value):
+        # Clamp visible value then invert for storage
+        if value < S_MIN:
+            value = S_MIN
+        elif value > S_MAX:
+            value = S_MAX
+        self.split_factor_internal = S_SUM - value
+
     split_factor: FloatProperty(
         name='Sidebar Width',
         description='Default = 41.75%',
         min=10.0,
         max=49.0,
         default=DEFAULT_SPLIT_FACTOR,
+        get=_get_split,
+        set=_set_split,
         precision=2,
         update=on_sidebar_settings_update,
     )
@@ -233,6 +268,11 @@ class EditorBarPreferences(AddonPreferences):
         description='Check to swap stack',
         default=DEFAULT_FLIP_EDITORS,
         update=on_sidebar_settings_update,
+    )
+    applyOnStartup: BoolProperty(
+        name='Apply on Blender Startup',
+        description='Rebuild the EditorBar layout from these preferences whenever Blender opens',
+        default=APPLY_ON_STARTUP_DEFAULT,
     )
 
     def draw(self, context):
@@ -274,6 +314,9 @@ class EditorBarPreferences(AddonPreferences):
             text='Properties Height',
             slider=True,
         )
+        layout.separator()
+        col = layout.column()
+        col.prop(self, 'applyOnStartup', text='Apply on Blender Startup')
         layout.separator()
         layout.operator(
             'editorbar.reset_preferences', text='Reset to Defaults', icon='LOOP_BACK'
@@ -320,14 +363,57 @@ classes: list[type] = [
 ]
 
 
+def applyPrefsOnce():
+    try:
+        from . import editorbar as _eb
+
+        prefs = bpy.context.preferences.addons[__package__].preferences  # type: ignore[index]
+        if not getattr(prefs, 'applyOnStartup', True):
+            return None
+
+        wm = bpy.context.window_manager
+        if not wm:
+            return None
+
+        for window in wm.windows:
+            screen = window.screen
+            if not screen:
+                continue
+            try:
+                if _eb.has_sidebar_editors(screen):
+                    _eb.close_sidebars(screen, window)
+                _eb.restore_sidebars(screen, window, bpy.context)
+            except Exception as e:
+                version_adapter.debug_log(f'Apply-on-startup failed on a window: {e}')
+        return None
+    except Exception as e:
+        version_adapter.debug_log(f'Apply-on-startup error: {e}')
+        return None
+
+
+@persistent
+def onLoadPost(_dummy):
+    bpy.app.timers.register(applyPrefsOnce, first_interval=0.2)
+
+
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     editorbar.register()
 
+    if onLoadPost not in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.append(onLoadPost)
+
+    # One-off timer on enable to cover initial activation
+    bpy.app.timers.register(applyPrefsOnce, first_interval=0.4)
+
 
 def unregister():
     _preference_monitor.cleanup()
+
+    if onLoadPost in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.remove(onLoadPost)
+
     editorbar.unregister()
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)

@@ -66,8 +66,16 @@ def restore_sidebars(
     prefs = get_editorbar_prefs(context)
 
     left_sidebar = prefs.left_sidebar
-    # Reverse width: slider shows 10-49, but we invert so left=wider, right=narrower
-    split_factor = map_split_factor(59.0 - prefs.split_factor)
+    # Use internal inverted width if available; else invert legacy visible value
+    width_pct = getattr(
+        prefs, 'split_factor_internal', 59.0 - getattr(prefs, 'split_factor', 41.75)
+    )
+    # Clamp to [10.0, 49.0] to avoid stray values
+    if width_pct < 10.0:
+        width_pct = 10.0
+    elif width_pct > 49.0:
+        width_pct = 49.0
+    split_factor = map_split_factor(width_pct)
     stack_ratio = map_stack_ratio(prefs.stack_ratio)
     flip_editors = prefs.flip_editors
 
