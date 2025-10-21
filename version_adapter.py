@@ -153,7 +153,7 @@ def safe_area_close(
         debug_log(f'Area close failed: {e}')
         # Silently handle errors - context may have changed
         if hasattr(bpy.context, 'preferences'):
-            print(f'[EditorBar] Area close failed: {e}')
+            debug_log(f'Area close failed: {e}')
         return False
 
 
@@ -216,7 +216,7 @@ def safe_area_split(
         debug_log(f'Area split failed: {e}')
         # Silently handle errors - context may have changed
         if hasattr(bpy.context, 'preferences'):
-            print(f'[EditorBar] Area split failed: {e}')
+            debug_log(f'Area split failed: {e}')
         return False
 
 
@@ -265,7 +265,7 @@ def safe_change_area_type(area: bpy.types.Area, new_type: str) -> bool:
     except Exception as e:
         debug_log(f'Area type change failed: {e}')
         if hasattr(bpy.context, 'preferences'):
-            print(f'[EditorBar] Area type change failed: {e}')
+            debug_log(f'Area type change failed: {e}')
         return False
 
 

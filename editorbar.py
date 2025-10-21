@@ -34,7 +34,7 @@ def map_split_factor(slider_value: float) -> float:
     return slider_value / 100.0
 
 
-def map_stack_ratio(percentage: int) -> float:
+def map_stack_ratio(percentage: float) -> float:
     """Convert percentage to stack ratio."""
     return percentage / 100.0
 
@@ -52,8 +52,8 @@ def get_editorbar_prefs(context: bpy.types.Context) -> Any:
 
         class DefaultPrefs:
             left_sidebar: bool = False
-            split_factor: int = 19
-            stack_ratio: int = 66
+            split_factor: float = 41.75
+            stack_ratio: float = 66.0
             flip_editors: bool = False
 
         return DefaultPrefs()
@@ -73,6 +73,10 @@ def restore_sidebars(
 
     split_value = split_factor if left_sidebar else 1.0 - split_factor
 
+    # Ensure window.screen matches the provided screen to avoid context mismatches
+    if not hasattr(window, 'screen') or window.screen != screen:
+        return False
+
     main_areas = [
         a
         for a in screen.areas
@@ -82,6 +86,10 @@ def restore_sidebars(
         return False
 
     base_area = get_rightmost_area(main_areas)
+
+    # Snapshot areas before the split to reliably find the new one
+    areas_before = screen.areas[:]
+
     # Use safe wrapper to split the area
     split_success = version_adapter.safe_area_split(
         screen, window, base_area, 'VERTICAL', split_value
@@ -90,7 +98,11 @@ def restore_sidebars(
     if not split_success:
         return False
 
-    sidebar_area = screen.areas[-1]
+    # Find the new area by diff, not by relying on order
+    new_areas = [a for a in screen.areas if a not in areas_before]
+    if not new_areas:
+        return False
+    sidebar_area = new_areas[0]
     version_adapter.safe_change_area_type(sidebar_area, 'OUTLINER')
 
     global _split_timer_func
@@ -125,7 +137,7 @@ def split_for_properties(
 
     # Compute split factor from stack_ratio only - flip_editors doesn't affect slider behavior
     split_factor = stack_ratio
-    # Avoid ambiguous 0.5 edge case by nudging slightly
+    # Avoid 0.5 edge case by nudging slightly
     if abs(split_factor - 0.5) < 1e-6:
         split_factor = 0.501
 
@@ -153,11 +165,9 @@ def split_for_properties(
         top_area, bottom_area = original_area, new_area
 
     if flip_editors:
-        # Properties bottom, Outliner top
         version_adapter.safe_change_area_type(top_area, 'OUTLINER')
         version_adapter.safe_change_area_type(bottom_area, 'PROPERTIES')
     else:
-        # Outliner bottom, Properties top
         version_adapter.safe_change_area_type(top_area, 'PROPERTIES')
         version_adapter.safe_change_area_type(bottom_area, 'OUTLINER')
 
@@ -176,9 +186,6 @@ class EDITORBAR_OT_toggle_sidebar(Operator):
             self.report({'WARNING'}, 'EditorBar only works in 3D Viewport')
             return {'CANCELLED'}
 
-        if area.type == 'PREFERENCES':
-            return {'CANCELLED'}
-
         window = context.window
         if not window:
             self.report({'WARNING'}, 'No valid window context')
@@ -189,7 +196,6 @@ class EDITORBAR_OT_toggle_sidebar(Operator):
             self.report({'WARNING'}, 'No valid screen context')
             return {'CANCELLED'}
 
-        # Additional validation for safe context
         if not version_adapter.check_area(window, screen, area):
             self.report({'WARNING'}, 'Context not safe for area operations')
             return {'CANCELLED'}
@@ -197,8 +203,10 @@ class EDITORBAR_OT_toggle_sidebar(Operator):
         try:
             if has_sidebar_editors(screen):
                 close_sidebars(screen, window)
+                self.report({'INFO'}, 'Closed EditorBar Sidebar')
             else:
                 restore_sidebars(screen, window, context)
+                self.report({'INFO'}, 'Opened EditorBar Sidebar')
         except Exception as e:
             self.report({'ERROR'}, f'Failed to toggle sidebar: {e}')
             return {'CANCELLED'}
@@ -232,6 +240,10 @@ class EDITORBAR_OT_flip_side(Operator):
             prefs = get_editorbar_prefs(context)
             prefs.left_sidebar = not prefs.left_sidebar
 
+            if has_sidebar_editors(screen):
+                close_sidebars(screen, window)
+                restore_sidebars(screen, window, context)
+
             side = 'left' if prefs.left_sidebar else 'right'
             self.report({'INFO'}, f'Sidebar moved to {side}')
         except Exception as e:
@@ -264,8 +276,17 @@ class EDITORBAR_OT_flip_stack(Operator):
             return {'CANCELLED'}
 
         try:
+            # 1) Toggle the preference
             prefs = get_editorbar_prefs(context)
             prefs.flip_editors = not prefs.flip_editors
+
+            # 2) Apply immediately: rebuild the sidebar if it exists
+            if has_sidebar_editors(screen):
+                close_sidebars(screen, window)
+                restore_sidebars(screen, window, context)
+            else:
+                # If sidebar isn't open yet, just report; next open will use new order
+                pass
 
             order = (
                 'Properties bottom, Outliner top'
@@ -291,9 +312,26 @@ class EDITORBAR_OT_debug_prefs(Operator):
         side = 'left' if prefs.left_sidebar else 'right'
         info = f'Sidebar Side: {side}, Split: {prefs.split_factor}, Stack: {prefs.stack_ratio}, Flip: {prefs.flip_editors}'
         self.report({'INFO'}, info)
-        print('=== EditorBar Preferences Debug ===')
-        print(info)
+        # Debug
+        version_adapter.debug_log('=== EditorBar Preferences Debug ===')
+        version_adapter.debug_log(info)
         return {'FINISHED'}
+
+
+class EDITORBAR_OT_open_prefs(Operator):
+    bl_idname: ClassVar[str] = 'editorbar.open_prefs'
+    bl_label: ClassVar[str] = 'Open EditorBar Preferences'
+    bl_description: ClassVar[str] = 'Open the Preferences to the EditorBar add-on'
+    bl_options: ClassVar[set[str]] = {'INTERNAL'}
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        try:
+            bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
+            bpy.ops.preferences.addon_show(module=__package__)
+            return {'FINISHED'}
+        except Exception as e:
+            self.report({'ERROR'}, f'Could not open preferences: {e}')
+            return {'CANCELLED'}
 
 
 class VIEW3D_PT_toggle_editorbar_sidebar(Panel):
@@ -306,19 +344,48 @@ class VIEW3D_PT_toggle_editorbar_sidebar(Panel):
     def draw(self, context: bpy.types.Context) -> None:
         layout = cast(Any, self.layout)
 
-        row = layout.row(align=True)
-        row.operator('editorbar.toggle_sidebar', icon='HIDE_OFF')  # type: ignore[reportOptionalMemberAccess]
-        row.operator('editorbar.flip_side', icon='ARROW_LEFTRIGHT')  # type: ignore[reportOptionalMemberAccess]
-        row.operator('editorbar.flip_stack', icon='UV_SYNC_SELECT')  # type: ignore[reportOptionalMemberAccess]
-
-        layout.separator()  # type: ignore[reportOptionalMemberAccess]
-        layout.operator(  # type: ignore[reportOptionalMemberAccess]
-            'editorbar.reset_preferences', text='Reset to Defaults', icon='LOOP_BACK'
+        screen = (
+            getattr(context.window, 'screen', None)
+            if getattr(context, 'window', None)
+            else None
         )
+        is_open = bool(screen and has_sidebar_editors(screen))
+
+        # N-Panel layout
+        # Toggle Sidebar
+        row = layout.row()
+        row.operator(
+            'editorbar.toggle_sidebar',
+            text='Close' if is_open else 'Open',
+            icon='HIDE_OFF',
+        )
+
+        # Flip controls
+        row = layout.row(align=True)
+        row.operator('editorbar.flip_stack', text='Flip Stack', icon='UV_SYNC_SELECT')  # type: ignore[reportOptionalMemberAccess]
+        row.operator('editorbar.flip_side', text='Flip Side', icon='ARROW_LEFTRIGHT')  # type: ignore[reportOptionalMemberAccess]
+
+        # Reset and Preferences
+        layout.separator()  # type: ignore[reportOptionalMemberAccess]
+        row = layout.row(align=True)
+        row.operator(
+            'editorbar.reset_preferences', text='Reset to Defaults', icon='LOOP_BACK'
+        )  # type: ignore[reportOptionalMemberAccess]
+        row.operator(
+            'editorbar.open_prefs',
+            text='Preferences',
+            icon='PREFERENCES',
+        )  # type: ignore[reportOptionalMemberAccess]
 
 
 def menu_func(self: Any, context: bpy.types.Context) -> None:
-    self.layout.operator('editorbar.toggle_sidebar', text='Toggle Sidebar')
+    is_open = bool(
+        getattr(context, 'window', None)
+        and getattr(context.window, 'screen', None)
+        and has_sidebar_editors(context.window.screen)
+    )
+    label = 'Close' if is_open else 'Open'
+    self.layout.operator('editorbar.toggle_sidebar', text=label)
 
 
 addon_keymaps: Any = []  # type: ignore[misc]
@@ -330,6 +397,7 @@ classes = [
     EDITORBAR_OT_flip_stack,
     EDITORBAR_OT_debug_prefs,
     VIEW3D_PT_toggle_editorbar_sidebar,
+    EDITORBAR_OT_open_prefs,
 ]
 
 
@@ -342,18 +410,32 @@ def register() -> None:
         kc = wm.keyconfigs.addon
         if kc:
             km = kc.keymaps.new(name='Window', space_type='EMPTY')
-            kmi = km.keymap_items.new(
-                idname='editorbar.toggle_sidebar',
-                type='N',
-                value='PRESS',
-                shift=True,
-                alt=True,
+            # Avoid duplicate keymap items on reload
+            exists = any(
+                kmi.idname == 'editorbar.toggle_sidebar'
+                and kmi.type == 'N'
+                and kmi.value == 'PRESS'
+                and kmi.shift
+                and kmi.alt
+                for kmi in km.keymap_items
             )
-            addon_keymaps.append((km, kmi))
+            if not exists:
+                kmi = km.keymap_items.new(
+                    idname='editorbar.toggle_sidebar',
+                    type='N',
+                    value='PRESS',
+                    shift=True,
+                    alt=True,
+                )
+                addon_keymaps.append((km, kmi))
 
 
 def unregister() -> None:
     bpy.types.VIEW3D_MT_view.remove(menu_func)
+    global _split_timer_func
+    if _split_timer_func and bpy.app.timers.is_registered(_split_timer_func):
+        bpy.app.timers.unregister(_split_timer_func)
+        _split_timer_func = None
     for km, kmi in addon_keymaps:
         km.keymap_items.remove(kmi)
     addon_keymaps.clear()

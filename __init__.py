@@ -38,8 +38,8 @@ class EditorBarPreferenceMonitor:
     def __init__(self):
         self._timer_active = False
         self._last_prefs = {}
-        self._debug = False  # Debug disabled for release build
-        self._debounce_delay = 0.05  # Wait 50ms after last change before applying
+        self._debug = False  # Disable debug for release build
+        self._debounce_delay = 0.05
 
     def activate_monitoring(self):
         """Start monitoring when preferences UI is drawn."""
@@ -93,7 +93,7 @@ class EditorBarPreferenceMonitor:
                 return False
             if not context.preferences or not hasattr(context.preferences, 'addons'):
                 return False
-            # Check if our package is registered (ignore type check for dynamic addon dict)
+            # Check if package is registered (ignore type check for dynamic addon dict)
             package = __package__
             if not package:
                 return False
@@ -110,7 +110,6 @@ class EditorBarPreferenceMonitor:
             self._stop_timer()
             return None
 
-        # Additional safety check for timer context validity
         if not version_adapter.validate_timer_context():
             if self._debug:
                 print('[EditorBar] Invalid timer context, stopping')
@@ -150,7 +149,6 @@ class EditorBarPreferenceMonitor:
     def _update_viewports(self):
         """Apply changes to all VIEW_3D areas with sidebars."""
         try:
-            # Validate timer context before any operations
             if not version_adapter.validate_timer_context():
                 if self._debug:
                     print('[EditorBar] Invalid context for viewport update')
@@ -172,13 +170,11 @@ class EditorBarPreferenceMonitor:
                     print('[EditorBar] No window context available')
                 return
 
-            # Validate window/screen relationship
             if not hasattr(window, 'screen') or window.screen != screen:
                 if self._debug:
                     print('[EditorBar] Window/screen context mismatch')
                 return
 
-            # Only update if sidebars actually exist
             if editorbar.has_sidebar_editors(screen):
                 if self._debug:
                     print('[EditorBar] Updating viewports with new preferences')
@@ -186,7 +182,6 @@ class EditorBarPreferenceMonitor:
                 editorbar.close_sidebars(screen, window)
                 editorbar.restore_sidebars(screen, window, bpy.context)
         except Exception as e:
-            # Log errors for debugging but don't crash
             if self._debug:
                 print(f'[EditorBar] Viewport update error: {e}')
             pass
@@ -202,7 +197,6 @@ def on_sidebar_settings_update(self, context):
     This callback is triggered by property update= parameters.
     Uses debouncing to prevent rapid-fire updates while dragging sliders.
     """
-    # Always use debounced update to prevent slider drag issues
     _preference_monitor.schedule_immediate_update()
 
 
@@ -242,7 +236,6 @@ class EditorBarPreferences(AddonPreferences):
     )
 
     def draw(self, context):
-        # Activate monitoring when preferences panel is drawn
         _preference_monitor.activate_monitoring()
 
         layout = self.layout
@@ -334,7 +327,6 @@ def register():
 
 
 def unregister():
-    # Clean up preference monitor timers before unregistering
     _preference_monitor.cleanup()
     editorbar.unregister()
     for cls in reversed(classes):
