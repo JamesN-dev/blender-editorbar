@@ -29,6 +29,7 @@ Thumbs.db
 logs/
 temp/
 debug/
+publish/
 
 # Tool caches
 .mypy_cache/

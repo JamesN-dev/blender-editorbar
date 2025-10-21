@@ -38,7 +38,7 @@ class EditorBarPreferenceMonitor:
     def __init__(self):
         self._timer_active = False
         self._last_prefs = {}
-        self._debug = True  # TEMPORARY: Debug enabled to diagnose slider issue
+        self._debug = False  # Debug disabled for release build
         self._debounce_delay = 0.05  # Wait 50ms after last change before applying
 
     def activate_monitoring(self):
