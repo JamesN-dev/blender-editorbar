@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.1] - 2025-10-20
+
+- fix: turn debug mode off for release and removed unneccesary files from the build .zip
+
+
+## [0.4.1] - 2025-10-20
+
+- fix: turn debug mode off for release and removed unneccesary files from the build .zip
+
+
 ## [0.4.0] - 2025-10-20
 
 - Release 0.3.5: Update versions and changelog
