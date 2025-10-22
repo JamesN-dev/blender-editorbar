@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.3] - 2025-10-21
+
+- refactor: improve EditorBar stability and context safety
+
+
 ## [0.4.2] - 2025-10-21
 
 - Revert "Release 0.4.1: Update versions and changelog"
