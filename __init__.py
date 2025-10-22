@@ -44,7 +44,7 @@ class EditorBarPreferenceMonitor:
     def __init__(self):
         self._timer_active = False
         self._last_prefs = {}
-        self._debug = False  # Disable debug for release build
+        self._debug = False
         self._debounce_delay = 0.05
 
     def activate_monitoring(self):
@@ -54,13 +54,11 @@ class EditorBarPreferenceMonitor:
 
     def schedule_immediate_update(self):
         """Schedule a debounced update - cancels previous pending updates."""
-        # Unregister any pending update to prevent rapid-fire updates
         if bpy.app.timers.is_registered(self._immediate_update):
             bpy.app.timers.unregister(self._immediate_update)
             if self._debug:
                 print('[EditorBar] Cancelled previous pending update')
 
-        # Schedule new update with debounce delay
         bpy.app.timers.register(
             self._immediate_update, first_interval=self._debounce_delay
         )
@@ -99,7 +97,7 @@ class EditorBarPreferenceMonitor:
                 return False
             if not context.preferences or not hasattr(context.preferences, 'addons'):
                 return False
-            # Check if package is registered (ignore type check for dynamic addon dict)
+
             package = __package__
             if not package:
                 return False
@@ -109,7 +107,6 @@ class EditorBarPreferenceMonitor:
 
     def _timer_callback(self):
         """Main timer callback - checks for changes and updates VIEW_3D."""
-        # Stop timer if no longer in preferences
         if not self._is_preferences_context():
             if self._debug:
                 print('[EditorBar] Not in preferences context, stopping timer')
@@ -140,17 +137,16 @@ class EditorBarPreferenceMonitor:
                 if self._debug:
                     print(f'[EditorBar] Preferences changed: {current_prefs}')
                 self._last_prefs = current_prefs.copy()
-                # Use debounced update to prevent rapid-fire changes
                 self.schedule_immediate_update()
         except Exception:
             pass
 
-        return 0.15  # Continue every 150ms
+        return 0.15
 
     def _immediate_update(self):
         """Immediate one-time update."""
         self._update_viewports()
-        return None  # Run once
+        return None
 
     def _update_viewports(self):
         """Apply changes to all VIEW_3D areas with sidebars."""
@@ -184,7 +180,6 @@ class EditorBarPreferenceMonitor:
             if editorbar.has_sidebar_editors(screen):
                 if self._debug:
                     print('[EditorBar] Updating viewports with new preferences')
-                # Close and reopen with new settings
                 editorbar.close_sidebars(screen, window)
                 editorbar.restore_sidebars(screen, window, bpy.context)
         except Exception as e:
@@ -225,9 +220,7 @@ class EditorBarPreferences(AddonPreferences):
     )
 
     def _get_split(self):
-        # Return the user-facing value; invert the internal storage
         val = getattr(self, 'split_factor_internal', (S_SUM - DEFAULT_SPLIT_FACTOR))
-        # Clamp for safety
         if val < S_MIN:
             val = S_MIN
         elif val > S_MAX:
@@ -235,7 +228,6 @@ class EditorBarPreferences(AddonPreferences):
         return S_SUM - val
 
     def _set_split(self, value):
-        # Clamp visible value then invert for storage
         if value < S_MIN:
             value = S_MIN
         elif value > S_MAX:
@@ -341,7 +333,6 @@ class EDITORBAR_OT_reset_preferences(bpy.types.Operator):
 
     def execute(self, context):
         prefs = context.preferences.addons[__package__].preferences  # type: ignore[index]
-        # Get default values directly from property definitions
         for prop in [
             'split_factor',
             'stack_ratio',
@@ -350,13 +341,11 @@ class EDITORBAR_OT_reset_preferences(bpy.types.Operator):
         ]:
             default_value = type(prefs).bl_rna.properties[prop].default
             setattr(prefs, prop, default_value)
-        # Trigger immediate update to apply changes
         on_sidebar_settings_update(prefs, context)
         self.report({'INFO'}, 'EditorBar preferences reset to defaults')
         return {'FINISHED'}
 
 
-# Classes to register
 classes: list[type] = [
     EditorBarPreferences,
     EDITORBAR_OT_reset_preferences,

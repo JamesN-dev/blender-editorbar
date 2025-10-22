@@ -25,7 +25,7 @@ def close_sidebars(screen: bpy.types.Screen, window: bpy.types.Window) -> None:
         areas = [a for a in screen.areas if a.type == area_type]
         if areas:
             area = get_rightmost_area(areas)
-            # Use safe wrapper to prevent crashes on 4.2
+            # safe wrapper to prevent crashes on 4.2-4.4
             version_adapter.safe_area_close(screen, window, area)
 
 
@@ -50,13 +50,13 @@ def get_editorbar_prefs(context: bpy.types.Context) -> Any:
     except Exception:
         pass
 
-        class DefaultPrefs:
-            left_sidebar: bool = False
-            split_factor: float = 41.75
-            stack_ratio: float = 66.0
-            flip_editors: bool = False
+    class DefaultPrefs:
+        left_sidebar: bool = False
+        split_factor: float = 41.75
+        stack_ratio: float = 66.0
+        flip_editors: bool = False
 
-        return DefaultPrefs()
+    return DefaultPrefs()
 
 
 def restore_sidebars(
@@ -66,11 +66,9 @@ def restore_sidebars(
     prefs = get_editorbar_prefs(context)
 
     left_sidebar = prefs.left_sidebar
-    # Use internal inverted width if available; else invert legacy visible value
     width_pct = getattr(
         prefs, 'split_factor_internal', 59.0 - getattr(prefs, 'split_factor', 41.75)
     )
-    # Clamp to [10.0, 49.0] to avoid stray values
     if width_pct < 10.0:
         width_pct = 10.0
     elif width_pct > 49.0:
@@ -81,7 +79,6 @@ def restore_sidebars(
 
     split_value = split_factor if left_sidebar else 1.0 - split_factor
 
-    # Ensure window.screen matches the provided screen to avoid context mismatches
     if not hasattr(window, 'screen') or window.screen != screen:
         return False
 
@@ -95,22 +92,21 @@ def restore_sidebars(
 
     base_area = get_rightmost_area(main_areas)
 
-    # Snapshot areas before the split to reliably find the new one
-    areas_before = screen.areas[:]
+    areas_before = {a.as_pointer() for a in screen.areas}
 
-    # Use safe wrapper to split the area
     split_success = version_adapter.safe_area_split(
         screen, window, base_area, 'VERTICAL', split_value
     )
 
     if not split_success:
         return False
-
-    # Find the new area by diff, not by relying on order
-    new_areas = [a for a in screen.areas if a not in areas_before]
-    if not new_areas:
+    new_area = next(
+        (a for a in screen.areas if a.as_pointer() not in areas_before),
+        None,
+    )
+    if not new_area:
         return False
-    sidebar_area = new_areas[0]
+    sidebar_area = new_area
     version_adapter.safe_change_area_type(sidebar_area, 'OUTLINER')
 
     global _split_timer_func
@@ -141,28 +137,22 @@ def split_for_properties(
     if original_area.height < 200:
         return None
 
-    areas_before = screen.areas[:]
+    areas_before = {a.as_pointer() for a in screen.areas}
 
-    # Compute split factor from stack_ratio only - flip_editors doesn't affect slider behavior
     split_factor = stack_ratio
-    # Avoid 0.5 edge case by nudging slightly
+    # Avoid 0.5 edge case by slight nudge
     if abs(split_factor - 0.5) < 1e-6:
         split_factor = 0.501
 
-    # Use safe wrapper to split the area
     split_success = version_adapter.safe_area_split(
         screen, window, original_area, 'HORIZONTAL', split_factor
     )
-
     if not split_success:
         return None
 
-    new_area = None
-    for area in screen.areas:
-        if area not in areas_before:
-            new_area = area
-            break
-
+    new_area = next(
+        (a for a in screen.areas if a.as_pointer() not in areas_before), None
+    )
     if not new_area:
         return None
 
@@ -188,7 +178,6 @@ class EDITORBAR_OT_toggle_sidebar(Operator):
     bl_description: ClassVar[str] = 'Toggle the EditorBar sidebar'
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        # Validate context before any operations
         area = getattr(context, 'area', None)
         if not area or area.type != 'VIEW_3D':
             self.report({'WARNING'}, 'EditorBar only works in 3D Viewport')
@@ -284,16 +273,13 @@ class EDITORBAR_OT_flip_stack(Operator):
             return {'CANCELLED'}
 
         try:
-            # 1) Toggle the preference
             prefs = get_editorbar_prefs(context)
             prefs.flip_editors = not prefs.flip_editors
 
-            # 2) Apply immediately: rebuild the sidebar if it exists
             if has_sidebar_editors(screen):
                 close_sidebars(screen, window)
                 restore_sidebars(screen, window, context)
             else:
-                # If sidebar isn't open yet, just report; next open will use new order
                 pass
 
             order = (
@@ -359,7 +345,6 @@ class VIEW3D_PT_toggle_editorbar_sidebar(Panel):
         )
         is_open = bool(screen and has_sidebar_editors(screen))
 
-        # N-Panel layout
         # Toggle Sidebar
         row = layout.row()
         row.operator(
@@ -418,7 +403,6 @@ def register() -> None:
         kc = wm.keyconfigs.addon
         if kc:
             km = kc.keymaps.new(name='Window', space_type='EMPTY')
-            # Avoid duplicate keymap items on reload
             exists = any(
                 kmi.idname == 'editorbar.toggle_sidebar'
                 and kmi.type == 'N'

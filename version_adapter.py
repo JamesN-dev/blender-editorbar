@@ -11,7 +11,6 @@ import bpy
 _BLENDER_VER: tuple[int, int, int] | None = None
 _IS_4_5: bool | None = None
 
-# Debug flag - set to False to disable debug logging
 DEBUG = False
 
 
@@ -22,7 +21,6 @@ def debug_log(message: str) -> None:
 
 
 def get_blender_version() -> tuple[int, int, int]:
-    """Get current Blender version as tuple (major, minor, patch)."""
     global _BLENDER_VER
     if _BLENDER_VER is None:
         _BLENDER_VER = bpy.app.version
@@ -33,10 +31,8 @@ def get_blender_version() -> tuple[int, int, int]:
 
 
 def is_version_at_least(major: int, minor: int, patch: int = 0) -> bool:
-    """Return True if Blender version is at least the specified version."""
     global _IS_4_5
 
-    # Cache version check for 4.5.0 (the only version we check)
     if (major, minor, patch) == (4, 5, 0):
         if _IS_4_5 is None:
             current = get_blender_version()
@@ -45,6 +41,8 @@ def is_version_at_least(major: int, minor: int, patch: int = 0) -> bool:
         else:
             debug_log(f'Version >= 4.5.0: {_IS_4_5} (cached)')
         return _IS_4_5
+
+    return False
 
 
 def check_area(
@@ -62,22 +60,18 @@ def check_area(
     Returns:
         True if context is safe for area operations
     """
-    # Check basic None guards
     if not window or not screen or not area:
         debug_log('Context validation FAILED: window, screen, or area is None')
         return False
 
-    # Verify window has valid screen
     if not hasattr(window, 'screen') or window.screen != screen:
         debug_log('Context validation FAILED: window.screen mismatch')
         return False
 
-    # Verify area exists in screen
     if not hasattr(screen, 'areas'):
         debug_log('Context validation FAILED: screen has no areas attribute')
         return False
 
-    # Check if area exists in screen.areas (can't use 'in' operator on bpy collections)
     area_found = False
     try:
         for a in screen.areas:
@@ -92,7 +86,6 @@ def check_area(
         debug_log('Context validation FAILED: area not found in screen.areas')
         return False
 
-    # Verify area has valid dimensions (not being destroyed)
     if not hasattr(area, 'width') or not hasattr(area, 'height'):
         debug_log('Context validation FAILED: area missing width/height attributes')
         return False
@@ -102,7 +95,6 @@ def check_area(
         )
         return False
 
-    # Verify area has valid type
     if not hasattr(area, 'type') or not area.type:
         debug_log('Context validation FAILED: area missing or invalid type')
         return False
@@ -111,35 +103,18 @@ def check_area(
 
 
 def safe_area_close(
-    screen: bpy.types.Screen,
-    window: bpy.types.Window,
-    area: bpy.types.Area,
+    screen: bpy.types.Screen, window: bpy.types.Window, area: bpy.types.Area
 ) -> bool:
-    """Safely close an area with version-specific validation.
-
-    Args:
-        screen: Screen containing the area
-        window: Window context
-        area: Area to close
-
-    Returns:
-        True if area was closed successfully, False otherwise
-    """
-    # Pre-validate context
+    """Safely close an area based on version."""
     if not check_area(window, screen, area):
         debug_log('Area close aborted: invalid context')
         return False
 
-    # Additional validation for older versions
     if not is_version_at_least(4, 5, 0):
         debug_log('Applying 4.2-4.4 safety checks')
-        # 4.2-4.4: Extra safety checks
-        # Ensure we have at least 2 areas before closing
         if len(screen.areas) < 2:
             debug_log(f'Area close aborted: only {len(screen.areas)} area(s)')
             return False
-
-        # Don't close if area is too small (might be mid-operation)
         if area.width < 50 or area.height < 50:
             debug_log(f'Area close aborted: too small ({area.width}x{area.height})')
             return False
@@ -151,9 +126,6 @@ def safe_area_close(
         return True
     except Exception as e:
         debug_log(f'Area close failed: {e}')
-        # Silently handle errors - context may have changed
-        if hasattr(bpy.context, 'preferences'):
-            debug_log(f'Area close failed: {e}')
         return False
 
 
@@ -164,24 +136,11 @@ def safe_area_split(
     direction: str,
     factor: float,
 ) -> bool:
-    """Safely split an area with version-specific validation.
-
-    Args:
-        screen: Screen containing the area
-        window: Window context
-        area: Area to split
-        direction: Split direction ('VERTICAL' or 'HORIZONTAL')
-        factor: Split factor (0.0-1.0)
-
-    Returns:
-        True if area was split successfully, False otherwise
-    """
-    # Pre-validate context
+    """Safely split an area with version-specific validation."""
     if not check_area(window, screen, area):
         debug_log('Area split aborted: invalid context')
         return False
 
-    # Validate split parameters
     if direction not in {'VERTICAL', 'HORIZONTAL'}:
         debug_log(f"Area split aborted: invalid direction '{direction}'")
         return False
@@ -189,11 +148,8 @@ def safe_area_split(
         debug_log(f'Area split aborted: invalid factor {factor}')
         return False
 
-    # Additional validation for older versions
     if not is_version_at_least(4, 5, 0):
         debug_log('Applying 4.2-4.4 safety checks')
-        # 4.2-4.4: Extra safety checks
-        # Ensure area is large enough to split
         min_size = 200
         if direction == 'VERTICAL' and area.width < min_size:
             debug_log(f'Area split aborted: width {area.width} < {min_size}')
@@ -201,8 +157,6 @@ def safe_area_split(
         if direction == 'HORIZONTAL' and area.height < min_size:
             debug_log(f'Area split aborted: height {area.height} < {min_size}')
             return False
-
-        # Avoid edge cases with very small or large factors
         if factor < 0.1 or factor > 0.9:
             debug_log(f'Area split aborted: factor {factor} outside [0.1, 0.9]')
             return False
@@ -214,9 +168,6 @@ def safe_area_split(
         return True
     except Exception as e:
         debug_log(f'Area split failed: {e}')
-        # Silently handle errors - context may have changed
-        if hasattr(bpy.context, 'preferences'):
-            debug_log(f'Area split failed: {e}')
         return False
 
 
@@ -264,8 +215,6 @@ def safe_change_area_type(area: bpy.types.Area, new_type: str) -> bool:
         return True
     except Exception as e:
         debug_log(f'Area type change failed: {e}')
-        if hasattr(bpy.context, 'preferences'):
-            debug_log(f'Area type change failed: {e}')
         return False
 
 
@@ -279,14 +228,12 @@ def validate_timer_context() -> bool:
         True if context is safe for timer operations
     """
     try:
-        # Check basic context availability
         if not hasattr(bpy, 'context'):
             debug_log('Timer context invalid: bpy.context unavailable')
             return False
 
         context = bpy.context
 
-        # Must have valid window and screen
         if not hasattr(context, 'window') or not context.window:
             debug_log('Timer context invalid: no window')
             return False
@@ -297,23 +244,16 @@ def validate_timer_context() -> bool:
         window = context.window
         screen = context.screen
 
-        # Verify window's screen matches context screen
         if not hasattr(window, 'screen') or window.screen != screen:
             debug_log('Timer context invalid: screen mismatch')
             return False
 
-        # Verify screen has areas
         if not hasattr(screen, 'areas') or not screen.areas:
             debug_log('Timer context invalid: no areas')
             return False
 
-        # Other Checks
         if not is_version_at_least(4, 5, 0):
             debug_log('Applying 4.2-4.4 timer checks')
-            # Check if in transitional state in 4.2-4.4.
-            if len(screen.areas) < 1:
-                debug_log('Timer context invalid: no areas in screen')
-                return False
             valid_area_found = any(
                 hasattr(area, 'type')
                 and hasattr(area, 'width')
