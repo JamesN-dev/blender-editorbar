@@ -5,7 +5,7 @@ from typing import Any, ClassVar, cast
 import bpy
 from bpy.types import Operator, Panel
 
-from . import version_adapter
+from . import version_adapter, workspaces
 
 _split_timer_func = None
 
@@ -82,15 +82,17 @@ def restore_sidebars(
     if not hasattr(window, 'screen') or window.screen != screen:
         return False
 
-    main_areas = [
-        a
-        for a in screen.areas
-        if a.type not in {'OUTLINER', 'PROPERTIES', 'DOPESHEET_EDITOR'}
-    ]
-    if not main_areas:
+    # Get the target areas from our new dispatcher
+    target_areas = workspaces.get_target_areas(screen, context.workspace.name)
+    if not target_areas:
+        print(
+            'EditorBar: No suitable area found to create a sidebar in this workspace.'
+        )
         return False
 
-    base_area = get_rightmost_area(main_areas)
+    # For now, we only handle the simple case of one area.
+    # We will build on this to handle multiple areas later.
+    base_area = target_areas[0]
 
     areas_before = {a.as_pointer() for a in screen.areas}
 
