@@ -1,9 +1,9 @@
-from typing import ClassVar
+from typing import Any, ClassVar, cast
 
 import bpy
 from bpy.app.handlers import persistent
 from bpy.props import BoolProperty, FloatProperty
-from bpy.types import AddonPreferences
+from bpy.types import AddonPreferences, Context
 
 from . import version_adapter
 
@@ -18,16 +18,22 @@ bl_info = {
     'category': 'UI',
 }
 
-# Default values as constants
-DEFAULT_LEFT_SIDEBAR = False  # False = RIGHT, True = LEFT
-DEFAULT_SPLIT_FACTOR = 41.75  # Actual percentage width (10-49%), reversed: left=wider
-DEFAULT_STACK_RATIO = 66.0  # Actual percentage height (51-90%)
+# Default values
+DEFAULT_LEFT_SIDEBAR = False
+DEFAULT_SPLIT_FACTOR: float = (
+    41.75  # Inverted slider for better UI: Dragging right widens the sidebar.
+)
+DEFAULT_STACK_RATIO: float = 66.0
 DEFAULT_FLIP_EDITORS = False
 
-S_MIN = 10.0
-S_MAX = 49.0
-S_SUM = S_MIN + S_MAX  # 59.0
+S_MIN: float = 10.0
+S_MAX: float = 49.0
+S_SUM: float = S_MIN + S_MAX
 APPLY_ON_STARTUP_DEFAULT = True
+
+
+LOAD_POST_DELAY: float = 0.2  # Seconds to wait after file load
+REGISTER_DELAY: float = 0.4  # Seconds to wait after addon registration
 
 
 class EditorBarPreferenceMonitor:
@@ -41,18 +47,18 @@ class EditorBarPreferenceMonitor:
     - Provides minimal performance overhead
     """
 
-    def __init__(self):
-        self._timer_active = False
-        self._last_prefs = {}
-        self._debug = False
-        self._debounce_delay = 0.05
+    def __init__(self) -> None:
+        self._timer_active: bool = False
+        self._last_prefs: dict[str, bool | float] = {}
+        self._debug: bool = False
+        self._debounce_delay: float = 0.05
+        self._poll_interval: float = 0.15
 
-    def activate_monitoring(self):
-        """Start monitoring when preferences UI is drawn."""
+    def activate_monitoring(self) -> None:
         if not self._timer_active and self._is_preferences_context():
             self._start_timer()
 
-    def schedule_immediate_update(self):
+    def schedule_immediate_update(self) -> None:
         """Schedule a debounced update - cancels previous pending updates."""
         if bpy.app.timers.is_registered(self._immediate_update):
             bpy.app.timers.unregister(self._immediate_update)
@@ -65,8 +71,7 @@ class EditorBarPreferenceMonitor:
         if self._debug:
             print(f'[EditorBar] Scheduled debounced update ({self._debounce_delay}s)')
 
-    def _start_timer(self):
-        """Start the preference monitoring timer."""
+    def _start_timer(self) -> None:
         if not self._timer_active:
             self._timer_active = True
             if not bpy.app.timers.is_registered(self._timer_callback):
@@ -74,8 +79,7 @@ class EditorBarPreferenceMonitor:
                 if self._debug:
                     print('[EditorBar] Timer started')
 
-    def _stop_timer(self):
-        """Stop the preference monitoring timer."""
+    def _stop_timer(self) -> None:
         if self._timer_active:
             self._timer_active = False
             if bpy.app.timers.is_registered(self._timer_callback):
@@ -83,13 +87,13 @@ class EditorBarPreferenceMonitor:
                 if self._debug:
                     print('[EditorBar] Timer stopped')
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Clean up all timers (called on unregister)."""
         self._stop_timer()
         if bpy.app.timers.is_registered(self._immediate_update):
             bpy.app.timers.unregister(self._immediate_update)
 
-    def _is_preferences_context(self):
+    def _is_preferences_context(self) -> bool:
         """Check if we're in preferences and likely viewing EditorBar addon."""
         try:
             context = bpy.context
@@ -98,14 +102,14 @@ class EditorBarPreferenceMonitor:
             if not context.preferences or not hasattr(context.preferences, 'addons'):
                 return False
 
-            package = __package__
+            package: str | None = __package__
             if not package:
                 return False
-            return package in context.preferences.addons  # type: ignore[operator]
+            return package in context.preferences.addons
         except Exception:
             return False
 
-    def _timer_callback(self):
+    def _timer_callback(self) -> float | None:
         """Main timer callback - checks for changes and updates VIEW_3D."""
         if not self._is_preferences_context():
             if self._debug:
@@ -124,9 +128,13 @@ class EditorBarPreferenceMonitor:
             if not bpy.context.preferences or not hasattr(
                 bpy.context.preferences, 'addons'
             ):
-                return 0.15
-            addon_prefs = bpy.context.preferences.addons[__package__].preferences  # type: ignore[index]
-            current_prefs = {
+                return self._poll_interval
+            # Safely get addon prefs
+            addon_pkg = bpy.context.preferences.addons.get(__package__)
+            if not addon_pkg:
+                return self._poll_interval  # Safety check for unlikely edge case
+            addon_prefs = cast('EditorBarPreferences', addon_pkg.preferences)
+            current_prefs: dict[str, bool | float] = {
                 'left_sidebar': addon_prefs.left_sidebar,
                 'split_factor': addon_prefs.split_factor,
                 'stack_ratio': addon_prefs.stack_ratio,
@@ -138,17 +146,16 @@ class EditorBarPreferenceMonitor:
                     print(f'[EditorBar] Preferences changed: {current_prefs}')
                 self._last_prefs = current_prefs.copy()
                 self.schedule_immediate_update()
-        except Exception:
-            pass
+        except Exception as e:
+            if self._debug:
+                print(f'[EditorBar] Error checking preferences: {e}')
 
-        return 0.15
+        return self._poll_interval
 
-    def _immediate_update(self):
-        """Immediate one-time update."""
+    def _immediate_update(self) -> None:
         self._update_viewports()
-        return None
 
-    def _update_viewports(self):
+    def _update_viewports(self) -> None:
         """Apply changes to all VIEW_3D areas with sidebars."""
         try:
             if not version_adapter.validate_timer_context():
@@ -185,14 +192,13 @@ class EditorBarPreferenceMonitor:
         except Exception as e:
             if self._debug:
                 print(f'[EditorBar] Viewport update error: {e}')
-            pass
 
 
 # Global monitor instance
 _preference_monitor = EditorBarPreferenceMonitor()
 
 
-def on_sidebar_settings_update(self, context):
+def on_sidebar_settings_update(self, context: Context) -> None:
     """Update sidebar when settings change - debounced updates.
 
     This callback is triggered by property update= parameters.
@@ -202,7 +208,7 @@ def on_sidebar_settings_update(self, context):
 
 
 class EditorBarPreferences(AddonPreferences):
-    bl_idname = __package__  # type: ignore[assignment]
+    bl_idname = __package__
 
     left_sidebar: BoolProperty(
         name='Swap Sidebar Side',
@@ -219,7 +225,7 @@ class EditorBarPreferences(AddonPreferences):
         options={'HIDDEN'},
     )
 
-    def _get_split(self):
+    def _get_split(self) -> float:
         val = getattr(self, 'split_factor_internal', (S_SUM - DEFAULT_SPLIT_FACTOR))
         if val < S_MIN:
             val = S_MIN
@@ -227,7 +233,7 @@ class EditorBarPreferences(AddonPreferences):
             val = S_MAX
         return S_SUM - val
 
-    def _set_split(self, value):
+    def _set_split(self, value: float) -> None:
         if value < S_MIN:
             value = S_MIN
         elif value > S_MAX:
@@ -267,7 +273,7 @@ class EditorBarPreferences(AddonPreferences):
         default=APPLY_ON_STARTUP_DEFAULT,
     )
 
-    def draw(self, context):
+    def draw(self, context: bpy.types.Context) -> None:
         _preference_monitor.activate_monitoring()
 
         layout = self.layout
@@ -275,41 +281,23 @@ class EditorBarPreferences(AddonPreferences):
 
         layout.separator()
 
-        # Main controls
+        # Toggle checkboxes
+        row = layout.row(align=True)
+        row.prop(self, 'left_sidebar', text='Left Side')
+        row.prop(self, 'flip_editors', text='Flip Stack')
+
+        layout.separator()
+
+        # Slider bars
         col = layout.column()
-
-        # Sidebar side with dynamic text
-        row = col.row()
-        side_text = 'Move to Right' if self.left_sidebar else 'Move to Left'
-        row.label(text=side_text)
-        row.prop(self, 'left_sidebar', text='')
-
-        # Flip stack
-        row = col.row()
-        flip_text = 'Properties Bottom' if self.flip_editors else 'Outliner Bottom'
-        row.label(text=flip_text)
-        row.prop(self, 'flip_editors', text='')
+        col.prop(self, 'split_factor', text='Sidebar Width', slider=True)
+        col.prop(self, 'stack_ratio', text='Properties Height', slider=True)
 
         layout.separator()
 
-        col = layout.column()
-        col.prop(
-            self,
-            'split_factor',
-            text='Sidebar Width',
-            slider=True,
-        )
-        layout.separator()
-        col.prop(
-            self,
-            'stack_ratio',
-            text='Properties Height',
-            slider=True,
-        )
-        layout.separator()
+        # Other settings
         col = layout.column()
         col.prop(self, 'applyOnStartup', text='Apply on Blender Startup')
-        layout.separator()
         layout.operator(
             'editorbar.reset_preferences', text='Reset to Defaults', icon='LOOP_BACK'
         )
@@ -331,8 +319,17 @@ class EDITORBAR_OT_reset_preferences(bpy.types.Operator):
     bl_description: ClassVar[str] = 'Reset all EditorBar preferences to default values'
     bl_options: ClassVar[set[str]] = {'REGISTER', 'UNDO'}
 
-    def execute(self, context):
-        prefs = context.preferences.addons[__package__].preferences  # type: ignore[index]
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        if not context.preferences:
+            self.report({'WARNING'}, 'Could not access preferences.')
+            return {'CANCELLED'}
+
+        addon_pkg = context.preferences.addons.get(__package__)
+        if not addon_pkg:
+            self.report({'WARNING'}, 'Could not find addon preferences to reset.')
+            return {'CANCELLED'}
+
+        prefs = addon_pkg.preferences
         for prop in [
             'split_factor',
             'stack_ratio',
@@ -341,6 +338,7 @@ class EDITORBAR_OT_reset_preferences(bpy.types.Operator):
         ]:
             default_value = type(prefs).bl_rna.properties[prop].default
             setattr(prefs, prop, default_value)
+
         on_sidebar_settings_update(prefs, context)
         self.report({'INFO'}, 'EditorBar preferences reset to defaults')
         return {'FINISHED'}
@@ -352,11 +350,18 @@ classes: list[type] = [
 ]
 
 
-def applyPrefsOnce():
+def applyPrefsOnce() -> None:
     try:
         from . import editorbar as _eb
 
-        prefs = bpy.context.preferences.addons[__package__].preferences  # type: ignore[index]
+        if not bpy.context.preferences:
+            return None
+
+        addon_pkg = bpy.context.preferences.addons.get(__package__)
+        if not addon_pkg:
+            return None
+        prefs = addon_pkg.preferences
+
         if not getattr(prefs, 'applyOnStartup', True):
             return None
 
@@ -381,11 +386,12 @@ def applyPrefsOnce():
 
 
 @persistent
-def onLoadPost(_dummy):
-    bpy.app.timers.register(applyPrefsOnce, first_interval=0.2)
+def onLoadPost(_dummy: Any) -> None:
+    """Apply preferences each time a new .blend file is loaded."""
+    bpy.app.timers.register(applyPrefsOnce, first_interval=LOAD_POST_DELAY)
 
 
-def register():
+def register() -> None:
     for cls in classes:
         bpy.utils.register_class(cls)
     editorbar.register()
@@ -393,11 +399,11 @@ def register():
     if onLoadPost not in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.append(onLoadPost)
 
-    # One-off timer on enable to cover initial activation
-    bpy.app.timers.register(applyPrefsOnce, first_interval=0.4)
+    # Apply settings on initial startup and when the addon is enabled.
+    bpy.app.timers.register(applyPrefsOnce, first_interval=REGISTER_DELAY)
 
 
-def unregister():
+def unregister() -> None:
     _preference_monitor.cleanup()
 
     if onLoadPost in bpy.app.handlers.load_post:
