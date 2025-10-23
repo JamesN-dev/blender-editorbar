@@ -19,9 +19,6 @@ INCLUDE_FILES = [
 ]
 
 
-# No need for exclusion logic; we will only include files explicitly listed in INCLUDE_FILES.
-
-
 def create_addon_zip():
     """Create a zip file containing only the required addon files."""
     dist_dir = SCRIPT_DIR / 'dist'
@@ -29,7 +26,6 @@ def create_addon_zip():
 
     zip_path = dist_dir / f'{ADDON_NAME}.zip'
 
-    # Remove existing zip if it exists
     if zip_path.exists():
         zip_path.unlink()
         print(f'Removed existing {zip_path.name}')
