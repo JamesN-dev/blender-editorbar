@@ -13,7 +13,7 @@ def get_current_version():
     manifest_path = Path('pyproject.toml')
     with open(manifest_path, 'rb') as f:
         data = tomllib.load(f)
-    return data['version']
+    return data['project']['version']
 
 
 def get_last_tag():
