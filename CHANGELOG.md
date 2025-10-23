@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.4] - 2025-10-22
+
+- Refactor: Improve Stability and Preferences UI
+
+
 ## [0.4.3] - 2025-10-21
 
 - refactor: improve EditorBar stability and context safety
