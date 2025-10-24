@@ -9,11 +9,11 @@ from pathlib import Path
 
 
 def get_current_version():
-    """Get version from blender_manifest.toml."""
-    manifest_path = Path('blender_manifest.toml')
+    """Get version from pyproject.toml."""
+    manifest_path = Path('pyproject.toml')
     with open(manifest_path, 'rb') as f:
         data = tomllib.load(f)
-    return data['version']
+    return data['project']['version']
 
 
 def get_last_tag():
@@ -51,7 +51,7 @@ def update_changelog(version):
 
     if not commits or commits == ['']:
         print('No new commits found')
-        return
+        return ''
 
     # Create new entry
     date = datetime.now().strftime('%Y-%m-%d')
@@ -78,15 +78,16 @@ def update_changelog(version):
 
     changelog_path.write_text(updated_content)
     print(f'Updated CHANGELOG.md with {len(commits)} commits')
+    return new_entry
 
 
-def update_pyproject_version(version):
-    """Update version in pyproject.toml."""
-    pyproject_path = Path('pyproject.toml')
-    content = pyproject_path.read_text()
+def update_blend_manifest_version(version):
+    """Update version in blender_manifest.toml."""
+    blend_manifest_path = Path('blender_manifest.toml')
+    content = blend_manifest_path.read_text()
     updated = re.sub(r'version = "[^"]+"', f'version = "{version}"', content)
-    pyproject_path.write_text(updated)
-    print(f'Updated pyproject.toml to {version}')
+    blend_manifest_path.write_text(updated)
+    print(f'Updated blender_manifest.toml to {version}')
 
 
 def update_init_version(version):
@@ -111,14 +112,22 @@ def create_release():
     print(f'Syncing all files to version {version}')
 
     # Update other version files
-    update_pyproject_version(version)
+    update_blend_manifest_version(version)
     update_init_version(version)
-    update_changelog(version)
+    changelog_content = update_changelog(version)
+
+    # Build the addon zip (this updates uv.lock)
+    print('Building the addon zip')
+    subprocess.run(['uv', 'run', 'build.py'], check=True)
 
     # Commit the changelog and version updates
     subprocess.run(['git', 'add', '.'], check=True)
+    if changelog_content:
+        commit_message = f'Release {version}\n\n{changelog_content}'
+    else:
+        commit_message = f'Release {version}'
     subprocess.run(
-        ['git', 'commit', '-m', f'Release {version}: Update versions and changelog'],
+        ['git', 'commit', '-m', commit_message],
         check=True,
     )
 
@@ -134,6 +143,7 @@ def create_release():
     subprocess.run(['git', 'push', 'origin', tag], check=True)
 
     print(f'✓ Released {tag}')
+    print('✓ GitHub Action will now create the release.')
 
 
 if __name__ == '__main__':

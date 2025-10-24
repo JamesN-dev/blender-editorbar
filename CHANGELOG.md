@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.5] - 2025-10-23
+
+- fix(release): Correctly read version from pyproject.toml
+- docs(contributing): Details about the release workflows added
+- ci(release): Automate and improve release process
+- add correct build and uv.lock update to 0.4.4
+
+
 ## [0.4.4] - 2025-10-22
 
 - Refactor: Improve Stability and Preferences UI

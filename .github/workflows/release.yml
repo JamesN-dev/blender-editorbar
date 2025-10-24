@@ -1,23 +1,28 @@
 name: Release
 
 permissions:
-  contents: write
+    contents: write
 
 on:
-  push:
-    tags:
-      - 'v*'
+    push:
+        tags:
+            - "v*"
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: dist/editorbar.zip
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    release:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Get Changelog Entry
+              id: get_changelog
+              run: |
+                  awk '/^## \[/{c++} c==1 {print; next} c>1 {exit}' CHANGELOG.md > release_notes.md
+                  echo -e "\n---\n\nSee the full [CHANGELOG.md](CHANGELOG.md) for more details." >> release_notes.md
+                  echo "changelog_path=release_notes.md" >> $GITHUB_OUTPUT
+            - name: Create Release
+              uses: softprops/action-gh-release@v1
+              with:
+                  files: dist/editorbar.zip
+                  body_path: ${{ steps.get_changelog.outputs.changelog_path }}
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
