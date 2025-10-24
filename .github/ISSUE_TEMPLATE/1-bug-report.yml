@@ -1,0 +1,78 @@
+name: Bug Report
+description: Report a bug.
+labels:
+    - "bug"
+assignees:
+    - "JamesN-dev"
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for taking the time to report an issue. Please provide as much detail as possible.
+    - type: dropdown
+      id: operating-system
+      attributes:
+          label: Operating System
+          description: What operating system are you using?
+          options:
+              - macOS
+              - Windows
+              - Linux
+      validations:
+          required: true
+    - type: input
+      id: os-version
+      attributes:
+          label: OS Version
+          description: What verfsion of your operating system are you using?
+          placeholder: ex. macOS 14.5, Windows 11, Ubuntu 22.04
+      validations:
+          required: true
+    - type: dropdown
+      id: blender-version
+      attributes:
+          label: Blender Version
+          description: What version of Blender are you using?
+          options:
+              - "4.2"
+              - "4.3"
+              - "4.4"
+              - "4.5"
+              - "5.0 Beta"
+              - "5.0"
+              - "5.1 Alpha"
+              - "5.1"
+              - "Other (specify in description)"
+      validations:
+          required: true
+    - type: input
+      id: editorbar-version
+      attributes:
+          label: EditorBar Version
+          description: What version of EditorBar are you using?
+          placeholder: ex. 0.4.5
+      validations:
+          required: true
+    - type: textarea
+      id: bug-description
+      attributes:
+          label: Describe the Bug
+          description: A clear and concise description of what the bug is
+      validations:
+          required: true
+    - type: textarea
+      id: steps-to-reproduce
+      attributes:
+          label: Steps to Reproduce
+          description: Please provide the exact steps needed to reproduce the behavior
+          placeholder: |
+              1.
+              2.
+              3.
+      validations:
+          required: true
+    - type: textarea
+      id: screenshots
+      attributes:
+          label: Screenshots or other comments
+          description: If applicable, please provide screenshots to help explain your problem. A screenshot of your EditorBar addon preferences is often very helpful!

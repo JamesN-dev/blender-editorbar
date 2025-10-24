@@ -13,16 +13,12 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
-
             - name: Get Changelog Entry
               id: get_changelog
               run: |
-                  # This script extracts the content of the latest release from the CHANGELOG.md file.
-                  # It works by finding the line with the new version number (e.g., "## [1.2.3]")
-                  # and then printing everything until it hits the next version number or the end of the file.
                   awk '/^## \[/{c++} c==1 {print; next} c>1 {exit}' CHANGELOG.md > release_notes.md
+                  echo -e "\n---\n\nSee the full [CHANGELOG.md](CHANGELOG.md) for more details." >> release_notes.md
                   echo "changelog_path=release_notes.md" >> $GITHUB_OUTPUT
-
             - name: Create Release
               uses: softprops/action-gh-release@v1
               with:

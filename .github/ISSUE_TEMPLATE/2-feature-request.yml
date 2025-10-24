@@ -1,0 +1,30 @@
+name: Feature Request
+description: Suggest a new idea or enhancement for EditorBar.
+labels:
+    - "enhancement"
+assignees:
+    - "JamesN-dev"
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for sharing your idea. Please describe the problem this feature would solve.
+    - type: textarea
+      id: problem-description
+      attributes:
+          label: What problem does this feature solve?
+          description: A clear description of the frustration or limitation you're facing.
+      validations:
+          required: true
+    - type: textarea
+      id: proposed-solution
+      attributes:
+          label: How should it work?
+          description: Describe your ideal solution and how you envision the feature working.
+      validations:
+          required: true
+    - type: textarea
+      id: example
+      attributes:
+          label: Example or other comments
+          description: If applicable, please provide an example of how this feature would be used. Include screenshots or mockups if available.
