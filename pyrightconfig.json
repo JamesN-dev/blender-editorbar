@@ -1,5 +1,5 @@
 {
-    "typeCheckingMode": "basic",
+    "typeCheckingMode": "strict",
     "pythonVersion": "3.12",
     "pythonPlatform": "Darwin",
 
@@ -16,6 +16,8 @@
         "**/.git"
     ],
 
+    "ignore": ["dist", "images"],
+
     "useLibraryCodeForTypes": true,
 
     "executionEnvironments": [
@@ -28,6 +30,7 @@
     ],
 
     // --- Diagnostic rule settings ---
+    "reportMissingImports": "error",
     "reportUnreachable": true,
     "reportAttributeAccessIssue": "none",
     "reportUnknownMemberType": "none",
