@@ -9,5 +9,4 @@ dependencies = []
 [dependency-groups]
 dev = [
     "fake-bpy-module-latest>=20251003",
-    "basedpyright>=1.0.0",
 ]
