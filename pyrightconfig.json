@@ -6,7 +6,7 @@
     "venvPath": ".",
     "venv": ".venv",
 
-    "include": ["."],
+    "include": ["src"],
     "exclude": [
         "**/__pycache__",
         "**/.venv",
@@ -22,7 +22,7 @@
 
     "executionEnvironments": [
         {
-            "root": ".",
+            "root": "src",
             "pythonVersion": "3.12",
             "pythonPlatform": "Darwin",
             "extraPaths": []

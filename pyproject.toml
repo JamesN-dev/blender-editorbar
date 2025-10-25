@@ -10,3 +10,6 @@ dependencies = []
 dev = [
     "fake-bpy-module-latest>=20251003",
 ]
+
+[tool.setuptools.packages.find]
+where = ["src"]
