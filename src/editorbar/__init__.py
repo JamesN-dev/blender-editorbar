@@ -13,7 +13,7 @@ bl_info = {
     'version': (0, 4, 5),
     'blender': (4, 2, 0),
     'location': 'View3D > Sidebar > View Tab',
-    'description': 'Turns the default Outliner and Properties editors in Blender workspaces into a sidebar that you can quickly collapse and expand',
+    'description': 'Turns the default Outliner and Properties editors in Blender workspaces into a sidebar that you can quickly collapse and expand (Alt+Shift+N)',
     'warning': '',
     'category': 'UI',
 }
@@ -65,9 +65,7 @@ class EditorBarPreferenceMonitor:
             if self._debug:
                 print('[EditorBar] Cancelled previous pending update')
 
-        bpy.app.timers.register(
-            self._immediate_update, first_interval=self._debounce_delay
-        )
+        bpy.app.timers.register(self._immediate_update, first_interval=self._debounce_delay)
         if self._debug:
             print(f'[EditorBar] Scheduled debounced update ({self._debounce_delay}s)')
 
@@ -125,9 +123,7 @@ class EditorBarPreferenceMonitor:
 
         # Check for preference changes
         try:
-            if not bpy.context.preferences or not hasattr(
-                bpy.context.preferences, 'addons'
-            ):
+            if not bpy.context.preferences or not hasattr(bpy.context.preferences, 'addons'):
                 return self._poll_interval
             # Safely get addon prefs
             addon_pkg = bpy.context.preferences.addons.get(__package__)
@@ -278,6 +274,7 @@ class EditorBarPreferences(AddonPreferences):
 
         layout = self.layout
         layout.label(text='EditorBar Preferences')
+        layout.label(text='Shortcut: Alt+Shift+N', icon='SHORTCUT')
 
         layout.separator()
 
@@ -298,9 +295,7 @@ class EditorBarPreferences(AddonPreferences):
         # Other settings
         col = layout.column()
         col.prop(self, 'applyOnStartup', text='Apply on Blender Startup')
-        layout.operator(
-            'editorbar.reset_preferences', text='Reset to Defaults', icon='LOOP_BACK'
-        )
+        layout.operator('editorbar.reset_preferences', text='Reset to Defaults', icon='LOOP_BACK')
 
 
 if 'bpy' in locals():
