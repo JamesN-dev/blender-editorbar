@@ -54,22 +54,15 @@ Want a different shortcut?
 
 ## Installation
 
-### Method 1: Extensions (Blender 4.2+)
+### Method 1: Install from official blender extension repo here https://extensions.blender.org/add-ons/editorbar/
+
+### Method 2: Download github release (Blender 4.2+)
 
 1. Download `editorbar.zip` from [Releases](https://github.com/JamesN-dev/blender-editorbar/releases/latest)
 2. Open Blender → **Edit > Preferences > Get Extensions**
 3. Click the dropdown arrow next to "Get Extensions" → **Install from Disk**
 4. Select your downloaded `editorbar.zip`
 5. Enable "EditorBar" in the extensions list
-
-### Method 2: Legacy Add-ons (All Blender versions)
-
-1. Download `editorbar.zip` from [Releases](https://github.com/JamesN-dev/blender-editorbar/releases/latest)
-2. Open Blender → **Edit > Preferences > Add-ons**
-3. Click **Install** → Select your downloaded `editorbar.zip`
-4. Enable "EditorBar" in the add-ons list
-
-That's it!
 
 ---
 
