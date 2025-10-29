@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-def get_current_version():
+def get_current_version() -> str:
     """Get version from pyproject.toml."""
     manifest_path = Path('pyproject.toml')
     with open(manifest_path, 'rb') as f:
@@ -16,7 +16,7 @@ def get_current_version():
     return data['project']['version']
 
 
-def get_last_tag():
+def get_last_tag() -> str | None:
     """Get the last git tag."""
     try:
         result = subprocess.run(
@@ -30,18 +30,18 @@ def get_last_tag():
         return None
 
 
-def get_commits_since_tag(tag):
+def get_commits_since_tag(tag: str | None) -> list[str]:
     """Get commit messages since the last tag."""
     if tag:
         cmd = ['git', 'log', f'{tag}..HEAD', '--pretty=format:%s']
     else:
         cmd = ['git', 'log', '--pretty=format:%s']
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, check=False, capture_output=True, text=True)
     return result.stdout.strip().split('\n') if result.stdout.strip() else []
 
 
-def update_changelog(version):
+def update_changelog(version: str) -> str:
     """Update CHANGELOG.md with new version."""
     changelog_path = Path('CHANGELOG.md')
 
@@ -81,7 +81,7 @@ def update_changelog(version):
     return new_entry
 
 
-def update_blend_manifest_version(version):
+def update_blend_manifest_version(version: str) -> None:
     """Update version in blender_manifest.toml."""
     blend_manifest_path = Path('blender_manifest.toml')
     content = blend_manifest_path.read_text()
@@ -90,9 +90,9 @@ def update_blend_manifest_version(version):
     print(f'Updated blender_manifest.toml to {version}')
 
 
-def update_init_version(version):
+def update_init_version(version: str) -> None:
     """Update version tuple in __init__.py."""
-    init_path = Path('__init__.py')
+    init_path = Path('src/editorbar/__init__.py')
     content = init_path.read_text()
 
     # Convert version string to tuple (e.g., "0.3.2" -> (0, 3, 2))
@@ -104,7 +104,7 @@ def update_init_version(version):
     print(f'Updated __init__.py to {version_tuple}')
 
 
-def create_release():
+def create_release() -> None:
     """Sync versions and create git tag."""
     version = get_current_version()
     tag = f'v{version}'
