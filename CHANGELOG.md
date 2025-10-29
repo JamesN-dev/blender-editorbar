@@ -2,6 +2,11 @@
 
 ## [0.4.6] - 2025-10-29
 
+- fix: replace invalid SHORTCUT icon with KEYINGSET
+
+
+## [0.4.6] - 2025-10-29
+
 - build: move scripts to root and fix addon zip structure
 - feat: show Alt+Shift+N shortcut in UI elements and descriptions
 - Squash merge restructure-src into main
