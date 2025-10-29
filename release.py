@@ -85,7 +85,7 @@ def update_blend_manifest_version(version: str) -> None:
     """Update version in blender_manifest.toml."""
     blend_manifest_path = Path('blender_manifest.toml')
     content = blend_manifest_path.read_text()
-    updated = re.sub(r'version = "[^"]+"', f'version = "{version}"', content)
+    updated = re.sub(r'^version = "[^"]+"', f'version = "{version}"', content, flags=re.MULTILINE)
     blend_manifest_path.write_text(updated)
     print(f'Updated blender_manifest.toml to {version}')
 

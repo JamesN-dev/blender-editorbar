@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.6] - 2025-10-29
+
+- build: move scripts to root and fix addon zip structure
+- feat: show Alt+Shift+N shortcut in UI elements and descriptions
+- Squash merge restructure-src into main
+- chore(dependencies): Remove basedpyright and commit changes before restructuring
+- fix(templates): Issue template refactor to get working on github
+
+
 ## [0.4.5] - 2025-10-23
 
 - fix(release): Correctly read version from pyproject.toml
