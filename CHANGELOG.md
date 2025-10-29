@@ -2,6 +2,12 @@
 
 ## [0.4.6] - 2025-10-29
 
+- Release 0.4.6
+- fix: replace invalid SHORTCUT icon with KEYINGSET
+
+
+## [0.4.6] - 2025-10-29
+
 - fix: replace invalid SHORTCUT icon with KEYINGSET
 
 
