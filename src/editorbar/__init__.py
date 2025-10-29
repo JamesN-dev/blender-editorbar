@@ -274,7 +274,7 @@ class EditorBarPreferences(AddonPreferences):
 
         layout = self.layout
         layout.label(text='EditorBar Preferences')
-        layout.label(text='Shortcut: Alt+Shift+N', icon='SHORTCUT')
+        layout.label(text='Shortcut: Alt+Shift+N', icon='KEYINGSET')
 
         layout.separator()
 
