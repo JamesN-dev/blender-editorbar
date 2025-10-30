@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from functools import partial
+from sys import platform
 from typing import Any, ClassVar, cast
 
 import bpy
@@ -83,7 +84,9 @@ def restore_sidebars(
         return False
 
     main_areas = [
-        a for a in screen.areas if a.type not in {'OUTLINER', 'PROPERTIES', 'DOPESHEET_EDITOR'}
+        a
+        for a in screen.areas
+        if a.type not in {'OUTLINER', 'PROPERTIES', 'DOPESHEET_EDITOR'}
     ]
     if not main_areas:
         return False
@@ -111,7 +114,9 @@ def restore_sidebars(
     if _split_timer_func and bpy.app.timers.is_registered(_split_timer_func):
         bpy.app.timers.unregister(_split_timer_func)
 
-    _split_timer_func = partial(split_for_properties, screen, window, stack_ratio, flip_editors)
+    _split_timer_func = partial(
+        split_for_properties, screen, window, stack_ratio, flip_editors
+    )
     bpy.app.timers.register(_split_timer_func, first_interval=0.2)
 
     return True
@@ -146,7 +151,9 @@ def split_for_properties(
     if not split_success:
         return None
 
-    new_area = next((a for a in screen.areas if a.as_pointer() not in areas_before), None)
+    new_area = next(
+        (a for a in screen.areas if a.as_pointer() not in areas_before), None
+    )
     if not new_area:
         return None
 
@@ -169,7 +176,11 @@ def split_for_properties(
 class EDITORBAR_OT_toggle_sidebar(Operator):
     bl_idname: ClassVar[str] = 'editorbar.toggle_sidebar'
     bl_label: ClassVar[str] = 'Toggle EditorBar Sidebar'
-    bl_description: ClassVar[str] = 'Toggle the EditorBar sidebar (Alt+Shift+N)'
+    bl_description: ClassVar[str] = (
+        'Toggle the EditorBar sidebar (Option+Shift+N)'
+        if platform == 'darwin'
+        else 'Toggle the EditorBar sidebar (Alt+Shift+N)'
+    )
 
     def execute(self, context: bpy.types.Context) -> set[str]:
         area = getattr(context, 'area', None)
@@ -333,15 +344,18 @@ class VIEW3D_PT_toggle_editorbar_sidebar(Panel):
         layout = cast(Any, self.layout)
 
         screen = (
-            getattr(context.window, 'screen', None) if getattr(context, 'window', None) else None
+            getattr(context.window, 'screen', None)
+            if getattr(context, 'window', None)
+            else None
         )
         is_open = bool(screen and has_sidebar_editors(screen))
 
         # Toggle Sidebar
         row = layout.row()
+        shortcut_text = 'Opt' if platform == 'darwin' else 'Alt'
         row.operator(
             'editorbar.toggle_sidebar',
-            text=('Close' if is_open else 'Open') + ' (Alt+Shift+N)',
+            text=f'{"Close" if is_open else "Open"} ({shortcut_text}+Shift+N)',
             icon='HIDE_OFF',
         )
 
@@ -353,7 +367,9 @@ class VIEW3D_PT_toggle_editorbar_sidebar(Panel):
         # Reset and Preferences
         layout.separator()  # type: ignore[reportOptionalMemberAccess]
         row = layout.row(align=True)
-        row.operator('editorbar.reset_preferences', text='Reset to Defaults', icon='LOOP_BACK')  # type: ignore[reportOptionalMemberAccess]
+        row.operator(
+            'editorbar.reset_preferences', text='Reset to Defaults', icon='LOOP_BACK'
+        )  # type: ignore[reportOptionalMemberAccess]
         row.operator(
             'editorbar.open_prefs',
             text='Preferences',
@@ -368,9 +384,7 @@ def menu_func(self: Any, context: bpy.types.Context) -> None:
         and has_sidebar_editors(context.window.screen)
     )
     label = 'Close' if is_open else 'Open'
-    self.layout.operator(
-        'editorbar.toggle_sidebar', text=f'{label} EditorBar Sidebar (Alt+Shift+N)'
-    )
+    self.layout.operator('editorbar.toggle_sidebar', text=f'{label} EditorBar Sidebar')
 
 
 addon_keymaps: Any = []  # type: ignore[misc]

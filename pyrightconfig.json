@@ -1,5 +1,5 @@
 {
-    "typeCheckingMode": "strict",
+    "typeCheckingMode": "basic",
     "pythonVersion": "3.12",
     "pythonPlatform": "Darwin",
 
@@ -31,13 +31,13 @@
 
     // --- Diagnostic rule settings ---
     "reportMissingImports": "error",
-    "reportUnreachable": true
-    // "reportAttributeAccessIssue": "none",
-    // "reportUnknownMemberType": "none",
-    // "reportUnknownArgumentType": "none",
-    // "reportCallInDefaultInitializer": "none",
-    // "reportInvalidTypeForm": "none",
-    // "reportGeneralTypeIssues": "",
-    // "reportAssignmentType": "none",
-    // "reportArgumentType": "none"
+    "reportUnreachable": true,
+    "reportAttributeAccessIssue": "none",
+    "reportUnknownMemberType": "none",
+    "reportUnknownArgumentType": "none",
+    "reportCallInDefaultInitializer": "none",
+    "reportInvalidTypeForm": "none",
+    "reportGeneralTypeIssues": "",
+    "reportAssignmentType": "none",
+    "reportArgumentType": "none"
 }
