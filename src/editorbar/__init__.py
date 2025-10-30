@@ -14,7 +14,7 @@ bl_info = {
     'version': (0, 4, 7),
     'blender': (4, 2, 0),
     'location': 'View3D > Sidebar > View Tab',
-    'description': 'Turns the default Outliner and Properties editors in Blender workspaces into a sidebar that you can quickly collapse and expand (Alt/CMD+Shift+N)',
+    'description': 'Turns the default Outliner and Properties editors in Blender workspaces into a sidebar that you can quickly collapse and expand (Alt/Opt+Shift+N)',
     'warning': '',
     'category': 'UI',
 }
@@ -30,7 +30,7 @@ DEFAULT_FLIP_EDITORS = False
 S_MIN: float = 10.0
 S_MAX: float = 49.0
 S_SUM: float = S_MIN + S_MAX
-APPLY_ON_STARTUP_DEFAULT = True
+APPLY_ON_STARTUP_DEFAULT = False
 
 
 LOAD_POST_DELAY: float = 0.2  # Seconds to wait after file load
