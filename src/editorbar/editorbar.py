@@ -9,6 +9,7 @@ from bpy.types import Operator, Panel
 from . import version_adapter
 
 _split_timer_func = None
+_saved_space_data: dict[str, dict[str, Any]] = {}
 
 
 def get_rightmost_area(areas: Sequence[bpy.types.Area]) -> bpy.types.Area:
@@ -20,12 +21,104 @@ def has_sidebar_editors(screen: bpy.types.Screen) -> bool:
     return any(a.type in {'OUTLINER', 'PROPERTIES'} for a in screen.areas)
 
 
+def capture_outliner_settings(space: Any) -> dict[str, Any]:
+    """Capture Outliner space settings to preserve them."""
+    settings: dict[str, Any] = {}
+
+    # Basic properties that should exist in most versions
+    outliner_props = [
+        'display_mode',
+        'filter_text',
+        'use_filter_complete',
+        'use_filter_object',
+        'use_filter_object_content',
+        'use_filter_children',
+        'use_sync_select',
+        'show_restrict_column_select',
+        'show_restrict_column_hide',
+        'show_restrict_column_viewport',
+        'show_restrict_column_render',
+        'show_restrict_column_holdout',
+        'show_restrict_column_indirect_only',
+    ]
+
+    # Filter state attributes
+    filter_attrs = [
+        'use_filter_collection',
+        'use_filter_object_mesh',
+        'use_filter_object_armature',
+        'use_filter_object_empty',
+        'use_filter_object_light',
+        'use_filter_object_camera',
+        'use_filter_object_others',
+        'filter_state',
+        'filter_invert',
+    ]
+
+    all_props = outliner_props + filter_attrs
+
+    for prop in all_props:
+        try:
+            if hasattr(space, prop):
+                settings[prop] = getattr(space, prop)
+        except Exception:
+            pass
+
+    return settings
+
+
+def restore_outliner_settings(space: Any, settings: dict[str, Any]) -> None:
+    """Restore Outliner space settings from saved data."""
+    for prop, value in settings.items():
+        try:
+            if hasattr(space, prop):
+                setattr(space, prop, value)
+        except Exception:
+            pass
+
+
+def capture_properties_settings(space: Any) -> dict[str, Any]:
+    """Capture Properties space settings to preserve them."""
+    settings: dict[str, Any] = {}
+
+    # Properties context (which tab is active)
+    if hasattr(space, 'context'):
+        try:
+            settings['context'] = space.context
+        except Exception:
+            pass
+
+    return settings
+
+
+def restore_properties_settings(space: Any, settings: dict[str, Any]) -> None:
+    """Restore Properties space settings from saved data."""
+    for prop, value in settings.items():
+        try:
+            if hasattr(space, prop):
+                setattr(space, prop, value)
+        except Exception:
+            pass
+
+
 def close_sidebars(screen: bpy.types.Screen, window: bpy.types.Window) -> None:
     """Close all sidebar editors."""
+    global _saved_space_data
+    _saved_space_data.clear()
+
     for area_type in ['OUTLINER', 'PROPERTIES']:
         areas = [a for a in screen.areas if a.type == area_type]
         if areas:
             area = get_rightmost_area(areas)
+
+            # Capture space data settings before closing
+            if area.spaces and area.spaces.active:
+                space = area.spaces.active
+                if area_type == 'OUTLINER':
+                    _saved_space_data['OUTLINER'] = capture_outliner_settings(space)
+                elif area_type == 'PROPERTIES':
+                    _saved_space_data['PROPERTIES'] = capture_properties_settings(space)
+
             # safe wrapper to prevent crashes on 4.2-4.4
             version_adapter.safe_area_close(screen, window, area)
 
@@ -110,6 +203,17 @@ def restore_sidebars(
     sidebar_area = new_area
     version_adapter.safe_change_area_type(sidebar_area, 'OUTLINER')
 
+    # Restore Outliner settings after creating the area
+    global _saved_space_data
+    if (
+        'OUTLINER' in _saved_space_data
+        and sidebar_area.spaces
+        and sidebar_area.spaces.active
+    ):
+        restore_outliner_settings(
+            sidebar_area.spaces.active, _saved_space_data['OUTLINER']
+        )
+
     global _split_timer_func
     if _split_timer_func and bpy.app.timers.is_registered(_split_timer_func):
         bpy.app.timers.unregister(_split_timer_func)
@@ -166,9 +270,33 @@ def split_for_properties(
     if flip_editors:
         version_adapter.safe_change_area_type(top_area, 'OUTLINER')
         version_adapter.safe_change_area_type(bottom_area, 'PROPERTIES')
+        outliner_area = top_area
+        properties_area = bottom_area
     else:
         version_adapter.safe_change_area_type(top_area, 'PROPERTIES')
         version_adapter.safe_change_area_type(bottom_area, 'OUTLINER')
+        outliner_area = bottom_area
+        properties_area = top_area
+
+    # Restore saved settings
+    global _saved_space_data
+    if (
+        'OUTLINER' in _saved_space_data
+        and outliner_area.spaces
+        and outliner_area.spaces.active
+    ):
+        restore_outliner_settings(
+            outliner_area.spaces.active, _saved_space_data['OUTLINER']
+        )
+
+    if (
+        'PROPERTIES' in _saved_space_data
+        and properties_area.spaces
+        and properties_area.spaces.active
+    ):
+        restore_properties_settings(
+            properties_area.spaces.active, _saved_space_data['PROPERTIES']
+        )
 
     return None
 
@@ -434,6 +562,8 @@ def unregister() -> None:
     if _split_timer_func and bpy.app.timers.is_registered(_split_timer_func):
         bpy.app.timers.unregister(_split_timer_func)
         _split_timer_func = None
+    global _saved_space_data
+    _saved_space_data.clear()
     for km, kmi in addon_keymaps:
         km.keymap_items.remove(kmi)
     addon_keymaps.clear()
