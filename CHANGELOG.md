@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.8] - 2026-05-06
+
+- fix: preserve Outliner filters when toggling sidebar (fixes #5)
+- refactor: Update apply on blender startup preference to False by default, and fix 'CMD' typo in bl_info
+- fix: Checks platform and suggests 'Opt' or 'Alt' when displaying shortcut
+
+
 ## [0.4.7] - 2025-10-29
 
 - Release 0.4.6

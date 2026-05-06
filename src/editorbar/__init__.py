@@ -11,7 +11,7 @@ from . import version_adapter
 bl_info = {
     'name': 'EditorBar',
     'author': 'atetraxx',
-    'version': (0, 4, 7),
+    'version': (0, 4, 8),
     'blender': (4, 2, 0),
     'location': 'View3D > Sidebar > View Tab',
     'description': 'Turns the default Outliner and Properties editors in Blender workspaces into a sidebar that you can quickly collapse and expand (Alt/Opt+Shift+N)',
